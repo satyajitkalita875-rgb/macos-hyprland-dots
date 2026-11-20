@@ -64,7 +64,24 @@ generate_thumbnail() {
     if [ -f "$out" ]; then
         return
     fi
-    magick "$abs_path" -resize "${THUMBNAIL_SIZE}x${THUMBNAIL_SIZE}" "$out"
+    local tmp="$out.$$.tmp.png"
+    if command -v magick >/dev/null 2>&1; then
+        magick "$abs_path" -resize "${THUMBNAIL_SIZE}x${THUMBNAIL_SIZE}" "$tmp"
+    elif command -v vipsthumbnail >/dev/null 2>&1; then
+        VIPS_WARNING=0 vipsthumbnail "$abs_path" -s "${THUMBNAIL_SIZE}x${THUMBNAIL_SIZE}" -o "$tmp" 2>/dev/null
+    elif command -v ffmpeg >/dev/null 2>&1; then
+        ffmpeg -nostdin -loglevel error -y -i "$abs_path" \
+            -vf "scale='min(${THUMBNAIL_SIZE},iw)':'min(${THUMBNAIL_SIZE},ih)':force_original_aspect_ratio=decrease" \
+            -frames:v 1 "$tmp"
+    else
+        return 1
+    fi
+    if [ -s "$tmp" ]; then
+        mv "$tmp" "$out"
+    else
+        rm -f "$tmp"
+        return 1
+    fi
 }
 
 # Parse arguments

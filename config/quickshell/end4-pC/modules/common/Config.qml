@@ -603,6 +603,7 @@ Singleton {
                     property bool showBluetooth: true
                     property bool showVolume: true
                     property bool showSpotlight: true
+                    property bool showWallpaper: true
                     property bool showControlCenter: true
                     property bool showClock: true
                 }

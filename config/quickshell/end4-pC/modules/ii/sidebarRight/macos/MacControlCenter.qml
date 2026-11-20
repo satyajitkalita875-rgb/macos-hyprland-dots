@@ -86,6 +86,13 @@ Item {
         onTriggered: Quickshell.execDetached(["hyprpicker", "-a"])
     }
 
+    Timer {
+        id: wallpaperTimer
+        interval: 220
+        repeat: false
+        onTriggered: GlobalStates.wallpaperSelectorOpen = true
+    }
+
     // Soft floating popover shadow (alpha < 0.35 so Hyprland blur stays cleanly inside the rounded glass card)
     RectangularShadow {
         anchors.fill: popoverSurface
@@ -772,7 +779,16 @@ Item {
 
                 Item { Layout.fillWidth: true }
 
-                // System Action Circles: Reload, Settings, Power
+                // System Action Circles: Wallpaper, Reload, Settings, Power
+                FooterIconButton {
+                    icon: "wallpaper"
+                    tooltip: Translation.tr("Wallpaper Selector")
+                    onClicked: {
+                        GlobalStates.sidebarRightOpen = false;
+                        wallpaperTimer.restart();
+                    }
+                }
+
                 FooterIconButton {
                     icon: "restart_alt"
                     tooltip: WM.compositor === "niri"

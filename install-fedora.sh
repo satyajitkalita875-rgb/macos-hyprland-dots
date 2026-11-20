@@ -72,6 +72,8 @@ WAYLAND_UTILS=(
     unzip
     tar
     ImageMagick
+    vips-tools
+    ffmpeg-free
     libnotify
     pavucontrol
     NetworkManager

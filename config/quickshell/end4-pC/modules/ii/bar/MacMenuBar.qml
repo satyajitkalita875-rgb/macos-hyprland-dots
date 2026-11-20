@@ -39,6 +39,7 @@ Item {
     readonly property bool showBluetooth: macCfg?.showBluetooth ?? true
     readonly property bool showVolume: macCfg?.showVolume ?? true
     readonly property bool showSpotlight: macCfg?.showSpotlight ?? true
+    readonly property bool showWallpaper: macCfg?.showWallpaper ?? true
     readonly property bool showControlCenter: macCfg?.showControlCenter ?? true
     readonly property bool showClock: macCfg?.showClock ?? true
 
@@ -1268,6 +1269,21 @@ Item {
 
                 MaterialSymbol {
                     text: "search"
+                    iconSize: 16
+                    color: root.fgColor
+                }
+            }
+
+            MenuBarItem {
+                visible: root.showWallpaper
+                horizontalPad: 5
+                active: GlobalStates.wallpaperSelectorOpen
+                tooltip: Translation.tr("Wallpaper Selector • Right-click for Random")
+                onClicked: GlobalStates.wallpaperSelectorOpen = !GlobalStates.wallpaperSelectorOpen
+                onRightClicked: Wallpapers.randomFromCurrentFolder()
+
+                MaterialSymbol {
+                    text: "wallpaper"
                     iconSize: 16
                     color: root.fgColor
                 }

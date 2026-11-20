@@ -417,6 +417,7 @@
             "showSpotlight": true,
             "showTray": true,
             "showVolume": true,
+            "showWallpaper": true,
             "showWifi": true,
             "showWorkspaces": true,
             "workspaceCount": 4

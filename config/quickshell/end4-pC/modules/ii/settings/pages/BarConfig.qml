@@ -313,18 +313,27 @@ ContentPage {
                             onCheckedChanged: { Config.options.bar.macos.showControlCenter = checked }
                         }
                         ConfigSwitch {
+                            buttonIcon: "wallpaper"
+                            text: Translation.tr("Wallpaper selector")
+                            checked: Config.options.bar.macos.showWallpaper
+                            onCheckedChanged: { Config.options.bar.macos.showWallpaper = checked }
+                        }
+                    }
+                    ConfigRow {
+                        uniform: true
+                        ConfigSwitch {
                             buttonIcon: "schedule"
                             text: Translation.tr("Clock")
                             checked: Config.options.bar.macos.showClock
                             onCheckedChanged: { Config.options.bar.macos.showClock = checked }
                         }
-                    }
-                    ConfigSwitch {
-                        enabled: Config.options.bar.macos.showClock
-                        buttonIcon: "calendar_today"
-                        text: Translation.tr("Show date in clock")
-                        checked: Config.options.time.showDate
-                        onCheckedChanged: { Config.options.time.showDate = checked }
+                        ConfigSwitch {
+                            enabled: Config.options.bar.macos.showClock
+                            buttonIcon: "calendar_today"
+                            text: Translation.tr("Show date in clock")
+                            checked: Config.options.time.showDate
+                            onCheckedChanged: { Config.options.time.showDate = checked }
+                        }
                     }
                 }
             }

@@ -52,8 +52,16 @@ StyledImage {
                 mkdir -p "$(dirname "$thumb")"
                 tmp="$thumb.$$.tmp.png"
                 trap 'kill "$pid" 2>/dev/null; rm -f "$tmp"' EXIT
-                magick "$src" -resize "$max"x"$max" "$tmp" & pid=$!
-                wait "$pid" && mv "$tmp" "$thumb" && exit 1
+                if command -v magick >/dev/null 2>&1; then
+                    magick "$src" -resize "$max"x"$max" "$tmp" & pid=$!
+                elif command -v vipsthumbnail >/dev/null 2>&1; then
+                    VIPS_WARNING=0 vipsthumbnail "$src" -s "$max"x"$max" -o "$tmp" 2>/dev/null & pid=$!
+                elif command -v ffmpeg >/dev/null 2>&1; then
+                    ffmpeg -nostdin -loglevel error -y -i "$src" -vf "scale='min($max,iw)':'min($max,ih)':force_original_aspect_ratio=decrease" -frames:v 1 "$tmp" & pid=$!
+                else
+                    exit 2
+                fi
+                wait "$pid" && [ -s "$tmp" ] && mv "$tmp" "$thumb" && exit 1
                 exit 2
             `, "_", thumbPath, root.sourcePath, `${maxSize}`]
         }
