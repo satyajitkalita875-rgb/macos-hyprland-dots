@@ -13,9 +13,9 @@ Rectangle {
 
     readonly property bool dark: Appearance.m3colors.darkmode
 
-    readonly property color idleColor: ColorUtils.applyAlpha(Appearance.colors.colLayer1Base, dark ? 0.72 : 0.78)
-    readonly property color hoverColor: ColorUtils.applyAlpha(Appearance.colors.colLayer2Base, dark ? 0.84 : 0.88)
-    readonly property color pressColor: ColorUtils.applyAlpha(Appearance.colors.colLayer3Base, dark ? 0.90 : 0.94)
+    readonly property color idleColor: Appearance.colors.colLayer1
+    readonly property color hoverColor: Appearance.colors.colLayer2
+    readonly property color pressColor: Appearance.colors.colLayer3
 
     radius: 16
     color: {

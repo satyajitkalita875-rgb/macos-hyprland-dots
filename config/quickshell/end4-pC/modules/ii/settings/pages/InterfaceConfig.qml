@@ -166,6 +166,28 @@ ContentPage {
                         Config.options.appearance.transparency.contentTransparency = value  
                     }
                 }
+                ConfigSlider {
+                    visible: WM.compositor === "hyprland"
+                    buttonIcon: "blur_on"
+                    text: Translation.tr("Blur")
+                    from: 0; to: 20
+                    stepSize: 1
+                    usePercentTooltip: false
+                    stopIndicatorValues: [4]
+                    value: Config.options.hyprland.decoration.blur.enabled
+                        ? Config.options.hyprland.decoration.blur.size
+                        : 0
+                    onMoved: {
+                        const v = Math.round(value)
+                        const enabled = v > 0
+                        const size = enabled ? v : Config.options.hyprland.decoration.blur.size
+                        if (enabled === Config.options.hyprland.decoration.blur.enabled
+                            && size === Config.options.hyprland.decoration.blur.size) return
+                        Config.options.hyprland.decoration.blur.enabled = enabled
+                        if (enabled) Config.options.hyprland.decoration.blur.size = size
+                        HyprlandConfig.applyBlur(enabled, size, Config.options.hyprland.decoration.blur.passes)
+                    }
+                }
             }
         }
 

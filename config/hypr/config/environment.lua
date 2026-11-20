@@ -5,6 +5,22 @@
 local home = os.getenv("HOME") or ""
 hl.env("XDG_DATA_DIRS", home .. "/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share")
 
+-- Fallback environment variables for non-UWSM sessions (e.g. Fedora GDM/SDDM direct Hyprland session)
+local function envDefault(name, value)
+    local cur = os.getenv(name)
+    if not cur or cur == "" then
+        hl.env(name, value)
+    end
+end
+
+envDefault("QT_QPA_PLATFORM", "wayland;xcb")
+envDefault("QT_QPA_PLATFORMTHEME", "qt6ct")
+envDefault("ELECTRON_OZONE_PLATFORM_HINT", "auto")
+envDefault("HYPRCURSOR_THEME", "Bibata-Modern-Ice")
+envDefault("HYPRCURSOR_SIZE", "24")
+envDefault("XCURSOR_THEME", "Bibata-Modern-Ice")
+envDefault("XCURSOR_SIZE", "24")
+
 -- if you have an NVIDIA GPU uncomment the following lines:
 
 -- hl.env("GBM_BACKEND", "nvidia-drm") -- force GBM as a backend

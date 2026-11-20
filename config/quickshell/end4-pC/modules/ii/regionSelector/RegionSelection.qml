@@ -245,10 +245,16 @@ PanelWindow {
         stdout: StdioCollector {
             id: imageDimensionCollector
             onStreamFinished: {
-                imageRegions = RegionFunctions.filterImageRegions(
-                    JSON.parse(imageDimensionCollector.text),
-                    root.windowRegions
-                );
+                const raw = imageDimensionCollector.text.trim();
+                if (!raw) return;
+                try {
+                    imageRegions = RegionFunctions.filterImageRegions(
+                        JSON.parse(raw),
+                        root.windowRegions
+                    );
+                } catch (e) {
+                    console.warn("[Region Selector] Failed to parse detected content regions:", e);
+                }
             }
         }
     }
@@ -282,6 +288,7 @@ PanelWindow {
         if (root.regionWidth <= 0 || root.regionHeight <= 0) {
             console.warn("[Region Selector] Invalid region size, skipping snip.");
             root.dismiss();
+            return;
         }
 
         // Clamp region to screen bounds
@@ -289,6 +296,12 @@ PanelWindow {
         root.regionY = Math.max(0, Math.min(root.regionY, root.screen.height - root.regionHeight));
         root.regionWidth = Math.max(0, Math.min(root.regionWidth, root.screen.width - root.regionX));
         root.regionHeight = Math.max(0, Math.min(root.regionHeight, root.screen.height - root.regionY));
+
+        if (Math.round(root.regionWidth * root.monitorScale) <= 0 || Math.round(root.regionHeight * root.monitorScale) <= 0) {
+            console.warn("[Region Selector] Clamped region size is empty, skipping snip.");
+            root.dismiss();
+            return;
+        }
 
         // Adjust action
         if (root.action === RegionSelection.SnipAction.Copy && root.mouseButton === Qt.RightButton) {
@@ -309,6 +322,10 @@ PanelWindow {
             Config.options.screenRecord.systemAudio, //
             Config.options.screenRecord.microphone
         )
+        if (!command) {
+            root.dismiss();
+            return;
+        }
         Quickshell.execDetached(command);
         if (root.action == RegionSelection.SnipAction.Record || root.action == RegionSelection.SnipAction.RecordWithSound) {
             root.phase = RegionSelection.Phase.Post

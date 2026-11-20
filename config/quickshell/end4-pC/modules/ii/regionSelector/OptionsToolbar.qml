@@ -66,11 +66,25 @@ Toolbar {
     ToolbarTabBar {
         id: targetTabs
         tabButtonList: root.targetModes
-        currentIndex: root.targetIndex()
+        Component.onCompleted: setCurrentIndex(root.targetIndex())
         onCurrentIndexChanged: {
             const entry = root.targetModes[currentIndex]
             if (entry && root.selectionMode !== entry.mode)
                 root.selectionMode = entry.mode
+        }
+    }
+
+    Connections {
+        target: root
+        function onSelectionModeChanged() {
+            const idx = root.targetIndex()
+            if (targetTabs.currentIndex !== idx)
+                targetTabs.setCurrentIndex(idx)
+        }
+        function onRecordingChanged() {
+            const idx = root.targetIndex()
+            if (targetTabs.currentIndex !== idx)
+                targetTabs.setCurrentIndex(idx)
         }
     }
 

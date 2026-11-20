@@ -198,7 +198,7 @@ Singleton {
     Process {
         id: getPackages
         running: false
-        command: ["bash", "-c", "pacman_count=$(pacman -Q | wc -l); flatpak_count=$(flatpak list 2>/dev/null | wc -l || echo 0); if [ \"$flatpak_count\" -gt 0 ]; then echo \"$pacman_count pacman, $flatpak_count fp\"; else echo \"$pacman_count pacman\"; fi"]
+        command: ["bash", "-c", "flatpak_count=$(flatpak list 2>/dev/null | wc -l || echo 0); if command -v pacman >/dev/null 2>&1; then pkg=\"$(pacman -Q | wc -l) pacman\"; elif command -v rpm >/dev/null 2>&1; then pkg=\"$(rpm -qa | wc -l) rpm\"; elif command -v dpkg-query >/dev/null 2>&1; then pkg=\"$(dpkg-query -f '.\\n' -W | wc -l) dpkg\"; else pkg=\"0 pkgs\"; fi; if [ \"$flatpak_count\" -gt 0 ]; then echo \"$pkg, $flatpak_count fp\"; else echo \"$pkg\"; fi"]
         stdout: SplitParser { onRead: data => root.packages = data.trim() }
     }
 

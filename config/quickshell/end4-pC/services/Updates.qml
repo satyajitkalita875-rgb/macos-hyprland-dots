@@ -7,7 +7,7 @@ import Quickshell
 import Quickshell.Io
 
 /*
- * System updates service. Currently only supports Arch.
+ * System updates service. Supports Arch (checkupdates/yay/paru) and Fedora (dnf).
  */
 Singleton {
     id: root
@@ -39,7 +39,7 @@ Singleton {
     Process {
         id: checkAvailabilityProc
         running: Config.ready && Config.options.updates.enableCheck
-        command: ["which", "checkupdates"]
+        command: ["bash", "-c", "command -v checkupdates >/dev/null 2>&1 || command -v dnf >/dev/null 2>&1"]
         onExited: (exitCode, exitStatus) => {
             root.available = (exitCode === 0);
             firstCheckTimer.start();
@@ -54,10 +54,11 @@ Singleton {
 
     Process {
         id: checkUpdatesProc
-        command: ["bash", "-c", "pacman=$(checkupdates 2>/dev/null | wc -l); if command -v yay >/dev/null 2>&1; then aur=$(yay -Qua 2>/dev/null | wc -l); elif command -v paru >/dev/null 2>&1; then aur=$(paru -Qua 2>/dev/null | wc -l); else aur=0; fi; echo $((pacman + aur))"]
+        command: ["bash", "-c", "if command -v checkupdates >/dev/null 2>&1; then pacman=$(checkupdates 2>/dev/null | wc -l); if command -v yay >/dev/null 2>&1; then aur=$(yay -Qua 2>/dev/null | wc -l); elif command -v paru >/dev/null 2>&1; then aur=$(paru -Qua 2>/dev/null | wc -l); else aur=0; fi; echo $((pacman + aur)); elif command -v dnf >/dev/null 2>&1; then dnf check-update -q 2>/dev/null | awk 'NF >= 3 && $1 !~ /^(Obsoleting|Security:|Last)/ {c++} END {print c+0}'; else echo 0; fi"]
         stdout: StdioCollector {
             onStreamFinished: {
-                root.count = parseInt(text.trim())
+                const parsed = parseInt(text.trim())
+                root.count = isNaN(parsed) ? 0 : parsed
             }
         }
     }

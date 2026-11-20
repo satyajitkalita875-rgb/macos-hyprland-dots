@@ -209,15 +209,6 @@ ContentPage {
                     stepSize: 1
                     onValueChanged: { Config.options.bar.macos.height = value }
                 }
-                ConfigSlider {
-                    buttonIcon: "opacity"
-                    text: Translation.tr("Background opacity")
-                    from: 0.0
-                    to: 1.0
-                    stopIndicatorValues: [0.68]
-                    value: Config.options.bar.macos.opacity
-                    onValueChanged: { Config.options.bar.macos.opacity = value }
-                }
                 ConfigSwitch {
                     buttonIcon: "border_bottom"
                     text: Translation.tr("Show bottom border")

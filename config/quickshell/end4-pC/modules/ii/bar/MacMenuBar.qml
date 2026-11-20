@@ -20,7 +20,6 @@ Item {
     readonly property bool dark: Appearance.m3colors.darkmode
     readonly property bool glassOn: Config.options?.background?.widgets?.glass?.enable ?? false
     readonly property var macCfg: Config.options?.bar?.macos ?? null
-    readonly property real barOpacity: macCfg?.opacity ?? 0.68
     readonly property bool showBorder: macCfg?.showBorder ?? true
     readonly property bool showLogo: macCfg?.showLogo ?? true
     readonly property bool showActiveApp: macCfg?.showActiveApp ?? true
@@ -94,10 +93,7 @@ Item {
     Rectangle {
         id: menuBarBg
         anchors.fill: parent
-        color: ColorUtils.applyAlpha(
-            Appearance.colors.colLayer0Base,
-            root.glassOn ? Math.max(0.15, root.barOpacity * 0.78) : root.barOpacity
-        )
+        color: Appearance.colors.colUiBackground
 
         WindowGlass {
             anchors.fill: parent

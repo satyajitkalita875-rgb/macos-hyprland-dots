@@ -786,6 +786,7 @@ ContentPage {
                         if (checked === Config.options.hyprland.decoration.blur.enabled) return
                         Config.options.hyprland.decoration.blur.enabled = checked
                         HyprlandConfig.set("decoration:blur:enabled", checked ? 1 : 0)
+                        HyprlandConfig.applyBlur(checked, Config.options.hyprland.decoration.blur.size, Config.options.hyprland.decoration.blur.passes)
                     }
                 }
 
@@ -798,6 +799,7 @@ ContentPage {
                         if (value === Config.options.hyprland.decoration.blur.size) return
                         Config.options.hyprland.decoration.blur.size = value
                         HyprlandConfig.set("decoration:blur:size", value)
+                        HyprlandConfig.applyBlur(Config.options.hyprland.decoration.blur.enabled, value, Config.options.hyprland.decoration.blur.passes)
                     }
                 }
 
@@ -810,6 +812,7 @@ ContentPage {
                         if (value === Config.options.hyprland.decoration.blur.passes) return
                         Config.options.hyprland.decoration.blur.passes = value
                         HyprlandConfig.set("decoration:blur:passes", value)
+                        HyprlandConfig.applyBlur(Config.options.hyprland.decoration.blur.enabled, Config.options.hyprland.decoration.blur.size, value)
                     }
                 }
 

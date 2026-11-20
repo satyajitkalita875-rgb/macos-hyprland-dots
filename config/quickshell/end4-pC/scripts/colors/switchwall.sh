@@ -328,17 +328,33 @@ switch() {
             fi
             if [ ${#missing_deps[@]} -gt 0 ]; then
                 echo "Missing deps: ${missing_deps[*]}"
-                echo "Arch: sudo pacman -S ${missing_deps[*]}"
-                action=$(notify-send \
-                    -a "Wallpaper switcher" \
-                    -c "im.error" \
-                    -A "install_arch=Install (Arch)" \
-                    "Can't switch to video wallpaper" \
-                    "Missing dependencies: ${missing_deps[*]}")
-                if [[ "$action" == "install_arch" ]]; then
-                    kitty -1 sudo pacman -S "${missing_deps[*]}"
-                    if command -v mpvpaper &>/dev/null && command -v ffmpeg &>/dev/null; then
-                        notify-send 'Wallpaper switcher' 'Alright, try again!' -a "Wallpaper switcher"
+                if command -v dnf &>/dev/null; then
+                    echo "Fedora: sudo dnf install ${missing_deps[*]}"
+                    action=$(notify-send \
+                        -a "Wallpaper switcher" \
+                        -c "im.error" \
+                        -A "install_pkg=Install (Fedora)" \
+                        "Can't switch to video wallpaper" \
+                        "Missing dependencies: ${missing_deps[*]}")
+                    if [[ "$action" == "install_pkg" ]]; then
+                        kitty -1 sudo dnf install "${missing_deps[*]}"
+                        if command -v mpvpaper &>/dev/null && command -v ffmpeg &>/dev/null; then
+                            notify-send 'Wallpaper switcher' 'Alright, try again!' -a "Wallpaper switcher"
+                        fi
+                    fi
+                else
+                    echo "Arch: sudo pacman -S ${missing_deps[*]}"
+                    action=$(notify-send \
+                        -a "Wallpaper switcher" \
+                        -c "im.error" \
+                        -A "install_arch=Install (Arch)" \
+                        "Can't switch to video wallpaper" \
+                        "Missing dependencies: ${missing_deps[*]}")
+                    if [[ "$action" == "install_arch" ]]; then
+                        kitty -1 sudo pacman -S "${missing_deps[*]}"
+                        if command -v mpvpaper &>/dev/null && command -v ffmpeg &>/dev/null; then
+                            notify-send 'Wallpaper switcher' 'Alright, try again!' -a "Wallpaper switcher"
+                        fi
                     fi
                 fi
                 exit 0

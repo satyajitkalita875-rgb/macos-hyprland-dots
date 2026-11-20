@@ -107,10 +107,7 @@ Item {
         radius: 22
         clip: true
 
-        color: ColorUtils.applyAlpha(
-            Appearance.colors.colLayer0Base,
-            root.glassOn ? 0.68 : 0.78
-        )
+        color: Appearance.colors.colUiBackground
 
         border.width: 1
         border.color: Appearance.colors.colLayer0Border
@@ -349,18 +346,15 @@ Item {
             // ROW 2: Display (Brightness) Slider Card
             // ------------------------------------------------------------
             MacModuleCard {
+                id: displayCard
                 Layout.fillWidth: true
                 visible: Config.options.sidebar.quickSliders.enable && Config.options.sidebar.quickSliders.showBrightness
-                implicitHeight: 68
+                implicitHeight: displayCardCol.implicitHeight + 21
 
-                readonly property real sliderVal: {
-                    if (!root.brightnessMonitor) return 1.0;
-                    return Hyprsunset.gamma === 100
-                        ? 0.3 + (root.brightnessMonitor.brightness ?? 0) * 0.7
-                        : (Hyprsunset.gamma - Hyprsunset.gammaLowerLimit) / Math.max(1, 100 - Hyprsunset.gammaLowerLimit) * 0.3;
-                }
+                readonly property real minBrightness: root.brightnessMonitor?.minBrightness ?? 0.05
 
                 ColumnLayout {
+                    id: displayCardCol
                     anchors {
                         fill: parent
                         leftMargin: 12
@@ -383,9 +377,7 @@ Item {
                         }
 
                         StyledText {
-                            text: Hyprsunset.gamma === 100
-                                ? `${Math.round((root.brightnessMonitor?.brightness ?? 1) * 100)}%`
-                                : `${Translation.tr("Gamma")} ${Math.round(Hyprsunset.gamma)}%`
+                            text: `${Math.round((root.brightnessMonitor?.brightness ?? 1) * 100)}%`
                             font.pixelSize: 11
                             font.features: ({ "tnum": 1 })
                             color: root.textSecondary
@@ -400,17 +392,14 @@ Item {
 
                     MacSlider {
                         Layout.fillWidth: true
-                        iconName: Hyprsunset.gamma === 100 ? "light_mode" : "wb_twilight"
-                        value: parent.parent.sliderVal
+                        iconName: "light_mode"
+                        from: displayCard.minBrightness
+                        to: 1.0
+                        value: root.brightnessMonitor?.brightness ?? 1.0
                         onMoved: newVal => {
                             if (!root.brightnessMonitor) return;
-                            if (newVal >= 0.3) {
-                                root.brightnessMonitor.setBrightness((newVal - 0.3) / 0.7);
-                                if (Hyprsunset.gamma !== 100) Hyprsunset.setGamma(100);
-                            } else {
-                                if (root.brightnessMonitor.brightness !== 0) root.brightnessMonitor.setBrightness(0);
-                                Hyprsunset.setGamma(newVal / 0.3 * (100 - Hyprsunset.gammaLowerLimit) + Hyprsunset.gammaLowerLimit);
-                            }
+                            root.brightnessMonitor.setBrightness(newVal);
+                            if (Hyprsunset.gamma !== 100) Hyprsunset.setGamma(100);
                         }
                     }
                 }
@@ -708,10 +697,10 @@ Item {
                     implicitWidth: notifPillRow.implicitWidth + 18
                     radius: 14
                     color: notifPillMouse.pressed
-                        ? Appearance.colors.colLayer3Base
+                        ? Appearance.colors.colLayer3
                         : (notifPillMouse.containsMouse
-                            ? Appearance.colors.colLayer2Base
-                            : ColorUtils.applyAlpha(Appearance.colors.colLayer1Base, 0.80))
+                            ? Appearance.colors.colLayer2
+                            : Appearance.colors.colLayer1)
                     border.width: 1
                     border.color: ColorUtils.applyAlpha(Appearance.colors.colLayer0Border, 0.70)
 
@@ -754,7 +743,7 @@ Item {
                     height: 28
                     implicitWidth: battRow.implicitWidth + 16
                     radius: 14
-                    color: ColorUtils.applyAlpha(Appearance.colors.colLayer1Base, 0.75)
+                    color: Appearance.colors.colLayer1
                     border.width: 1
                     border.color: ColorUtils.applyAlpha(Appearance.colors.colLayer0Border, 0.65)
 
@@ -1113,6 +1102,8 @@ Item {
         property string tooltip: ""
         signal clicked()
 
+        implicitWidth: 22
+        implicitHeight: 22
         width: 22
         height: 22
         radius: 11
@@ -1155,10 +1146,10 @@ Item {
         height: 28
         radius: 14
         color: footMouse.pressed
-            ? Appearance.colors.colLayer3Base
+            ? Appearance.colors.colLayer3
             : (footMouse.containsMouse
-                ? Appearance.colors.colLayer2Base
-                : ColorUtils.applyAlpha(Appearance.colors.colLayer1Base, 0.80))
+                ? Appearance.colors.colLayer2
+                : Appearance.colors.colLayer1)
         border.width: 1
         border.color: ColorUtils.applyAlpha(Appearance.colors.colLayer0Border, 0.70)
 

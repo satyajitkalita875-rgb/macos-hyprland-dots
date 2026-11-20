@@ -319,12 +319,16 @@ Scope {
                         id: popoverSurface
                         anchors.fill: parent
                         radius: Appearance.rounding.large
-                        color: ColorUtils.applyAlpha(
-                            Appearance.colors.colLayer0Base,
-                            drawer.glassOn ? 0.68 : 0.78
-                        )
+                        color: Appearance.colors.colUiBackground
                         border.width: 1
                         border.color: Appearance.colors.colLayer0Border
+
+                        WindowGlass {
+                            anchors.fill: parent
+                            glassEnabled: drawer.glassOn
+                            cardRadius: parent.radius
+                            tint: parent.color
+                        }
 
                         // Swallow clicks inside the popover so it doesn't dismiss
                         MouseArea {

@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Effects
 import qs.modules.common
+import qs.modules.common.functions
 import qs.modules.common.widgets
 
 Item {

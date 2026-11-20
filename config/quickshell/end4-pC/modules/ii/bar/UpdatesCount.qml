@@ -44,8 +44,8 @@ MouseArea {
         id: updateProc
         command: [
             "kitty", "--hold",
-            "fish", "-i", "-l", "-c",
-            "if type -q yay; yay -Syu --combinedupgrade=false; else if type -q paru; paru -Syu; else; sudo pacman -Syu; end"
+            "bash", "-lc",
+            "if command -v dnf >/dev/null 2>&1; then sudo dnf upgrade --refresh; elif command -v yay >/dev/null 2>&1; then yay -Syu --combinedupgrade=false; elif command -v paru >/dev/null 2>&1; then paru -Syu; elif command -v pacman >/dev/null 2>&1; then sudo pacman -Syu; fi"
         ]
         onExited: (exitCode, exitStatus) => {
             Updates.refresh()

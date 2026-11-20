@@ -43,12 +43,8 @@ Singleton {
     function decreaseBrightness(): void {
         const focusedName = Hyprland.focusedMonitor.name;
         const monitor = monitors.find(m => focusedName === m.screen.name);
-        if (monitor && monitor.brightness > 0) 
+        if (monitor)
             monitor.setBrightness(monitor.brightness - 0.05);
-        // if brightness is 0, then decrease gamma
-        else {
-            Hyprsunset.setGamma(Hyprsunset.gamma - 5);
-        }
     }
 
     reloadableId: "brightness"
@@ -98,9 +94,10 @@ Singleton {
         property bool isDdc
         property string busNum
         property int rawMaxBrightness: 100
+        readonly property real minBrightness: 0.05
         property real brightness
         property real brightnessMultiplier: 1.0
-        property real multipliedBrightness: Math.max(0, Math.min(1, brightness * (Config.options.light.antiFlashbang.enable ? brightnessMultiplier : 1)))
+        property real multipliedBrightness: Math.max(minBrightness, Math.min(1, brightness * (Config.options.light.antiFlashbang.enable ? brightnessMultiplier : 1)))
         property bool ready: false
         property bool animateChanges: !monitor.isDdc
 
@@ -110,7 +107,7 @@ Singleton {
         }
 
         Behavior on multipliedBrightness {
-            enabled: monitor.animateChanges
+            enabled: monitor.animateChanges && monitor.ready
             NumberAnimation {
                 duration: 200
                 easing.type: Easing.BezierSpline
@@ -118,7 +115,8 @@ Singleton {
             }
         }
         onMultipliedBrightnessChanged: {
-            if (monitor.animationEnabled) syncBrightness();
+            if (!monitor.ready) return;
+            if (monitor.animateChanges) syncBrightness();
             else setTimer.restart();
         }
 
@@ -155,20 +153,19 @@ Singleton {
         }
 
         function syncBrightness() {
-            const brightnessValue = Math.max(monitor.multipliedBrightness, 0);
+            const brightnessValue = Math.max(monitor.multipliedBrightness, monitor.minBrightness);
             if (isDdc) {
                 const rawValueRounded = Math.max(Math.floor(brightnessValue * monitor.rawMaxBrightness), 1);
                 setProc.exec(["ddcutil", "-b", busNum, "setvcp", "10", rawValueRounded]);
             } else {
-                const valuePercentNumber = Math.floor(brightnessValue * 100);
-                let valuePercent = `${valuePercentNumber}%`;
-                if (valuePercentNumber == 0) valuePercent = "1"; // Prevent fully black
+                const valuePercentNumber = Math.max(Math.round(monitor.minBrightness * 100), Math.round(brightnessValue * 100));
+                const valuePercent = `${valuePercentNumber}%`;
                 setProc.exec(["brightnessctl", "--class", "backlight", "s", valuePercent, "--quiet"])
             }
         }
 
         function setBrightness(value: real): void {
-            value = Math.max(0, Math.min(1, value));
+            value = Math.max(monitor.minBrightness, Math.min(1, value));
             monitor.brightness = value;
         }
 

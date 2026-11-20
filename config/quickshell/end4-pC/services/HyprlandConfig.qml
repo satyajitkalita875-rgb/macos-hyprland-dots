@@ -13,6 +13,7 @@ Singleton {
 
     readonly property string configuratorScriptPath: Quickshell.shellPath("scripts/hyprland/hyprconfigurator.py")
     readonly property string shellOverridesPath: FileUtils.trimFileProtocol(`${Directories.config}/hypr/hyprland/shellOverrides/main.lua`)
+    readonly property string blurOverridesPath: FileUtils.trimFileProtocol(`${Directories.config}/hypr/hyprland/shellOverrides/blur.lua`)
     readonly property string animOverridesPath: FileUtils.trimFileProtocol(`${Directories.config}/hypr/hyprland/shellOverrides/animations.lua`)
     readonly property string idleConfiguratorScriptPath: Quickshell.shellPath("scripts/hyprland/hypridleconfigurator.py")
     readonly property string hypridlePath: FileUtils.trimFileProtocol(`${Directories.config}/hypr/hypridle.conf`)
@@ -102,6 +103,20 @@ Singleton {
             "python3", root.configuratorScriptPath,
             "--anim-preset", preset,
             "--anim-file", root.animOverridesPath
+        ])
+    }
+
+    function applyBlur(enabled: bool, size: int, passes: int) {
+        if (WM.compositor !== "hyprland") return
+        const safeSize = Math.max(1, Math.min(20, Math.round(size)))
+        const safePasses = Math.max(1, Math.min(6, Math.round(passes)))
+        const enabledLua = enabled ? "true" : "false"
+        const luaExpr = `hl.config({ decoration = { blur = { enabled = ${enabledLua}, size = ${safeSize}, passes = ${safePasses} } } })`
+        Quickshell.execDetached(["hyprctl", "eval", luaExpr])
+        Quickshell.execDetached([
+            "bash", "-c",
+            `mkdir -p "$(dirname "$1")" && printf '%s\\n' "$2" > "$1.tmp" && mv -f "$1.tmp" "$1"`,
+            "_", root.blurOverridesPath, luaExpr
         ])
     }
 

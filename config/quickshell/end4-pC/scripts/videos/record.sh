@@ -132,6 +132,11 @@ for ((i=0;i<${#ARGS[@]};i++)); do
     fi
 done
 
+if ! command -v wf-recorder >/dev/null 2>&1; then
+    notify-send "Screen recording unavailable" "Install wf-recorder to record the screen" -a 'Recorder' & disown
+    exit 1
+fi
+
 if pgrep wf-recorder > /dev/null; then
     notify-send "Recording Stopped" "Stopped" -a 'Recorder' &
     pkill wf-recorder &

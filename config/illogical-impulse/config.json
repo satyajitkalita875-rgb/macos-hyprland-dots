@@ -44,12 +44,12 @@
             "namedScheme": "",
             "namedSchemePrimary": "",
             "namedSchemeSecondary": "",
-            "type": "scheme-fidelity"
+            "type": "scheme-tonal-spot"
         },
         "transparency": {
             "automatic": false,
-            "backgroundTransparency": 0.08448060075093866,
-            "contentTransparency": 0.648936170212766,
+            "backgroundTransparency": 0.3848560700876095,
+            "contentTransparency": 0.34355444305381727,
             "enable": true
         },
         "uiBackground": "themed",
@@ -68,13 +68,13 @@
     },
     "apps": {
         "bluetooth": "kcmshell6 kcm_bluetooth",
-        "changePassword": "kitty -1 --hold=yes fish -i -c 'passwd'",
+        "changePassword": "kitty -1 --hold=yes bash -lc 'passwd'",
         "manageUser": "kcmshell6 kcm_users",
         "network": "kcmshell6 kcm_networkmanagement",
         "networkEthernet": "kcmshell6 kcm_networkmanagement",
         "taskManager": "plasma-systemmonitor --page-name Processes",
         "terminal": "kitty -1",
-        "update": "kitty -1 --hold=yes fish -i -c 'pkexec pacman -Syu'",
+        "update": "kitty -1 --hold=yes bash -lc 'if command -v dnf >/dev/null 2>&1; then sudo dnf upgrade --refresh; else pkexec pacman -Syu; fi'",
         "volumeMixer": "~/.config/hypr/hyprland/scripts/launch_first_available.sh \"pavucontrol-qt\" \"pavucontrol\""
     },
     "audio": {
@@ -404,6 +404,23 @@
                 "powerButton"
             ]
         },
+        "macos": {
+            "height": 28,
+            "opacity": 0.68,
+            "showActiveApp": true,
+            "showBattery": true,
+            "showBluetooth": true,
+            "showBorder": true,
+            "showClock": true,
+            "showControlCenter": true,
+            "showLogo": true,
+            "showSpotlight": true,
+            "showTray": true,
+            "showVolume": true,
+            "showWifi": true,
+            "showWorkspaces": true,
+            "workspaceCount": 4
+        },
         "media": {
             "alwaysVisible": false,
             "maxWidth": 280,
@@ -551,7 +568,7 @@
             "blur": {
                 "enabled": true,
                 "passes": 3,
-                "size": 1
+                "size": 4
             },
             "inactiveOpacity": 0.9,
             "rounding": 22,
@@ -801,14 +818,14 @@
         "bottomGroup": true,
         "cornerOpen": {
             "bottom": false,
-            "bottomLeftAction": "sidebarLeftOpen",
+            "bottomLeftAction": "none",
             "bottomRightAction": "sidebarRightOpen",
             "clickless": false,
             "clicklessCornerEnd": true,
             "clicklessCornerVerticalOffset": 1,
             "cornerRegionHeight": 5,
             "cornerRegionWidth": 250,
-            "enable": true,
+            "enable": false,
             "valueScroll": true,
             "visualize": false
         },

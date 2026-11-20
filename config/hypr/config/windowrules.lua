@@ -120,14 +120,14 @@ hl.window_rule({
     no_focus = true,
 })
 
--- Quickshell layer rule
+-- Quickshell UI panels frosted glass blur (valid RE2 — no negative lookahead)
 hl.layer_rule({
   name = "quickshell",
   match = {
-    namespace = "^quickshell:(?!appDrawer$|sidebarRight$|bar$)",
+    namespace = "^quickshell:(settings|dock|verticalBar|sidebarLeft|overview|wallpaperSelector|session|notificationPopup|onScreenDisplay|mediaControls|desktopMenu|equalizer|dropshelf|osk|polkit|popup|popupMorph|reloadPopup)$",
   },
   no_anim = true,
-  ignore_alpha = 0.5,
+  ignore_alpha = 0.1,
   blur = true,
   blur_popups = true,
 })

@@ -1,6 +1,7 @@
 local mainMod = "SUPER"
 local qsCall = "qs -c end4-pC ipc call "
-local launchPrefix = "uwsm app -- " -- if you are not using UWSM, make this empty (e.g. "")
+local uwsmOk = os.execute("command -v uwsm >/dev/null 2>&1 && uwsm check is-active >/dev/null 2>&1")
+local launchPrefix = (uwsmOk == true or uwsmOk == 0) and "uwsm app -- " or ""
 
 -- AZERTY fix: the number-row keys emit symbols (& é " ' ...) without Shift, so
 -- binding to the digit characters fails. Bind by physical keycode instead.
