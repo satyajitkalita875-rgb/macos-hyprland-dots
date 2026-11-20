@@ -79,7 +79,7 @@ Scope {
                 property int normalExclusiveZone: (Config?.options.bar.autoHide.enable && (!mustShow || !Config?.options.bar.autoHide.pushWindows))
                     ? 0
                     : (barRoot.isMacosBar
-                        ? (Appearance.sizes.macosBarHeight + 4)
+                        ? (Appearance.sizes.macosBarHeight + 12)
                         : Appearance.sizes.baseBarHeight
                             + (Config.options.bar.cornerStyle === 1 ? Appearance.sizes.hyprlandGapsOut : 0)
                             + (Config.options.bar.cornerStyle === 2 ? -6 : 0))
@@ -91,7 +91,7 @@ Scope {
                 // Overlay layer only while special workspace sits on top of a fullscreen window on this monitor,
                 // else Top layer so fullscreen apps cover the bar as normal (Hyprland buries Top layer under fullscreen+special).
                 WlrLayershell.layer: (monitorHasFullscreen && monitorHasSpecialOpen) ? WlrLayer.Overlay : WlrLayer.Top
-                implicitHeight: barRoot.isMacosBar ? (Appearance.sizes.barHeight + 5) : (Appearance.sizes.barHeight + Appearance.rounding.screenRounding)
+                implicitHeight: barRoot.isMacosBar ? 420 : (Appearance.sizes.barHeight + Appearance.rounding.screenRounding)
                 // When Overlay-layer, bar shares a layer with the screen-corner click zones (ScreenCorners.qml)
                 // and same-layer overlap is resolved by stacking, not layer priority - bar was winning and
                 // swallowing the tiny corner-open hit rects. Carve them out of the bar's own mask so clicks
@@ -100,7 +100,13 @@ Scope {
                 property int cornerOpenCutWidth: cutOutCornerOpenZones ? Config.options.sidebar.cornerOpen.cornerRegionWidth : 0
                 property int cornerOpenCutHeight: cutOutCornerOpenZones ? Config.options.sidebar.cornerOpen.cornerRegionHeight : 0
                 mask: Region {
-                    item: hoverMaskRegion
+                    item: barRoot.isMacosBar ? barContent.macLeftIsland : hoverMaskRegion
+                    Region {
+                        item: barRoot.isMacosBar ? barContent.macCenterIsland : null
+                    }
+                    Region {
+                        item: barRoot.isMacosBar ? barContent.macRightIsland : null
+                    }
                     Region {
                         intersection: Intersection.Subtract
                         x: 0
@@ -174,7 +180,7 @@ Scope {
                     BarContent {
                         id: barContent
                         
-                        implicitHeight: Appearance.sizes.barHeight
+                        implicitHeight: barRoot.isMacosBar ? 420 : Appearance.sizes.barHeight
                         anchors {
                             right: parent.right
                             left: parent.left

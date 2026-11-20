@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Shapes
 import Qt5Compat.GraphicalEffects
 import Quickshell
 import Quickshell.Wayland
@@ -20,6 +19,11 @@ import qs.modules.common.functions
 Item {
     id: root
 
+    // Expose the 3 floating pills for Bar.qml click-through Wayland input mask
+    readonly property Item leftIslandItem: leftPill
+    readonly property Item centerIslandItem: centerIsland
+    readonly property Item rightIslandItem: rightIsland
+
     readonly property bool dark: Appearance.m3colors.darkmode
     readonly property var macCfg: Config.options?.bar?.macos ?? null
     readonly property bool showBorder: macCfg?.showBorder ?? true
@@ -36,29 +40,38 @@ Item {
     readonly property bool showControlCenter: macCfg?.showControlCenter ?? true
     readonly property bool showClock: macCfg?.showClock ?? true
 
+    // Media state: only show music in the Dynamic Island when actively playing
+    // (and keep media visible inside an already-expanded island if user pauses while hovering)
     readonly property MprisPlayer activePlayer: MprisController.activePlayer
-    readonly property bool hasMedia: root.activePlayer !== null && ((root.activePlayer.trackTitle ?? "").trim().length > 0 || (root.activePlayer.identity ?? "").trim().length > 0)
+    readonly property bool isMusicPlaying: root.activePlayer !== null && (root.activePlayer.isPlaying ?? false)
+    property bool keepMediaWhileExpanded: false
+    readonly property bool showCompactMusic: root.isMusicPlaying
+    readonly property bool showExpandedMusic: root.activePlayer !== null && (root.isMusicPlaying || root.keepMediaWhileExpanded)
 
-    // Unified dark obsidian notch palette with subtle Material You accent tint
-    readonly property color notchBaseColor: dark
-        ? ColorUtils.applyAlpha(ColorUtils.mix("#0d0f14", Appearance.colors.colPrimary, 0.94), 0.92)
-        : ColorUtils.applyAlpha(ColorUtils.mix("#14171f", Appearance.colors.colPrimary, 0.93), 0.88)
-    readonly property color notchHoverColor: dark
-        ? ColorUtils.applyAlpha(ColorUtils.mix("#0d0f14", Appearance.colors.colPrimary, 0.90), 0.96)
-        : ColorUtils.applyAlpha(ColorUtils.mix("#14171f", Appearance.colors.colPrimary, 0.88), 0.93)
+    // Floating iPhone Dynamic Island geometry
+    readonly property real pillHeight: Math.max(32, (macCfg?.height ?? 28) + 4)
+    readonly property real edgeGapTop: 6
+    readonly property real edgeGapSide: 12
 
-    // Crisp high-contrast foreground colors inside the 3 notches
+    // Unified iPhone Dynamic Island dark glass palette with subtle Material You tint
+    readonly property color islandBg: dark
+        ? ColorUtils.applyAlpha(ColorUtils.mix("#0b0d12", Appearance.colors.colPrimary, 0.94), 0.92)
+        : ColorUtils.applyAlpha(ColorUtils.mix("#11141c", Appearance.colors.colPrimary, 0.93), 0.88)
+    readonly property color islandBgHover: dark
+        ? ColorUtils.applyAlpha(ColorUtils.mix("#0b0d12", Appearance.colors.colPrimary, 0.90), 0.95)
+        : ColorUtils.applyAlpha(ColorUtils.mix("#11141c", Appearance.colors.colPrimary, 0.89), 0.92)
+    readonly property color innerCardBg: Qt.rgba(1, 1, 1, 0.08)
+    readonly property color innerCardBorder: Qt.rgba(1, 1, 1, 0.12)
+
     readonly property color fgColor: "#f5f7fa"
     readonly property color fgMuted: Qt.rgba(1, 1, 1, 0.62)
     readonly property color hoverBg: Qt.rgba(1, 1, 1, 0.14)
-    readonly property color activeBg: ColorUtils.applyAlpha(Appearance.colors.colPrimary, 0.34)
+    readonly property color activeBg: ColorUtils.applyAlpha(Appearance.colors.colPrimary, 0.36)
     readonly property color activeFg: "#ffffff"
     readonly property color accentColor: Appearance.colors.colPrimary
     readonly property color macGreen: "#30D158"
     readonly property color macRed: "#FF5C5C"
     readonly property color macOrange: "#FF9F0A"
-
-    readonly property real notchHeight: root.height + 4
 
     readonly property var monitor: WM.monitorFor(root.QsWindow.window?.screen)
     readonly property Toplevel activeWindow: ToplevelManager.activeToplevel
@@ -97,30 +110,50 @@ Item {
         return cleaned.replace(/\b\w/g, c => c.toUpperCase());
     }
 
+    function formatBatteryTime(seconds) {
+        var h = Math.floor(seconds / 3600);
+        var m = Math.floor((seconds % 3600) / 60);
+        if (h > 0) return `${h}h ${m}m`;
+        return `${m}m`;
+    }
+
     WorkspaceModel {
         id: wsModel
         screen: root.QsWindow.window?.screen
     }
 
     // ============================================================
-    // LEFT NOTCH: System Logo + Active App Name + Workspaces
+    // 1. LEFT FLOATING PILL: Logo + Active App + Workspaces
     // ============================================================
-    NotchIsland {
-        id: leftNotch
+    Rectangle {
+        id: leftPill
         visible: root.showLogo || root.showActiveApp || root.showWorkspaces
         anchors {
             left: parent.left
-            leftMargin: 12
-            top: Config.options.bar.bottom ? undefined : parent.top
-            bottom: Config.options.bar.bottom ? parent.bottom : undefined
+            leftMargin: root.edgeGapSide
+            top: parent.top
+            topMargin: root.edgeGapTop
         }
-        horizontalPad: 10
+        width: leftSection.implicitWidth + 18
+        height: root.pillHeight
+        radius: height / 2
+        color: root.islandBg
+        border.width: root.showBorder ? 1 : 0
+        border.color: Qt.rgba(1, 1, 1, 0.14)
+
+        Behavior on width {
+            NumberAnimation {
+                duration: 320
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
+            }
+        }
 
         RowLayout {
             id: leftSection
+            anchors.centerIn: parent
             spacing: 2
 
-            // System / Distro Logo Menu Button
             MenuBarItem {
                 id: logoItem
                 visible: root.showLogo
@@ -140,7 +173,6 @@ Item {
                 }
             }
 
-            // Bold Active App Name
             MenuBarItem {
                 visible: root.showActiveApp
                 horizontalPad: 7
@@ -157,7 +189,6 @@ Item {
                 }
             }
 
-            // Subtle separator dot
             Rectangle {
                 visible: root.showWorkspaces && (root.showLogo || root.showActiveApp)
                 Layout.alignment: Qt.AlignVCenter
@@ -170,13 +201,12 @@ Item {
                 opacity: 0.65
             }
 
-            // Compact Workspaces Switcher
             Item {
                 id: wsContainer
                 visible: root.showWorkspaces
                 Layout.alignment: Qt.AlignVCenter
                 implicitWidth: wsRow.implicitWidth
-                implicitHeight: root.notchHeight
+                implicitHeight: root.pillHeight
 
                 MouseArea {
                     anchors.fill: parent
@@ -210,12 +240,12 @@ Item {
                                 anchors.centerIn: parent
                                 width: 18
                                 height: 18
-                                radius: 5
+                                radius: 9
                                 color: wsItem.isActive
                                     ? root.activeBg
                                     : (wsMouse.containsMouse ? root.hoverBg : "transparent")
                                 border.width: wsItem.isActive ? 1 : 0
-                                border.color: ColorUtils.applyAlpha(root.accentColor, 0.65)
+                                border.color: ColorUtils.applyAlpha(root.accentColor, 0.7)
 
                                 Behavior on color { ColorAnimation { duration: 110 } }
 
@@ -231,7 +261,6 @@ Item {
                                     opacity: wsItem.isActive ? 1.0 : (wsItem.isOccupied ? 0.90 : 0.60)
                                 }
 
-                                // Tiny occupied dot under non-active occupied workspace
                                 Rectangle {
                                     visible: wsItem.isOccupied && !wsItem.isActive
                                     anchors {
@@ -262,152 +291,366 @@ Item {
     }
 
     // ============================================================
-    // CENTER NOTCH: Dynamic Island (Date & Time + Live Media Player)
+    // 2. CENTER IPHONE DYNAMIC ISLAND (Morphs & Expands In-Place!)
+    //    - Idle: Compact floating pill showing ONLY Date & Time
+    //    - Music Playing: Widens with Album Art + Animated Waveform
+    //    - Hovered: Smoothly expands downward showing Calendar, Tasks,
+    //      Uptime & Expanded Media Player (when playing) — NO external popup!
     // ============================================================
-    NotchIsland {
-        id: centerNotch
-        visible: root.showClock || root.hasMedia
-        z: 10
+    Rectangle {
+        id: centerIsland
+        visible: root.showClock || root.showCompactMusic
+        z: 20
         anchors {
             horizontalCenter: parent.horizontalCenter
-            top: Config.options.bar.bottom ? undefined : parent.top
-            bottom: Config.options.bar.bottom ? parent.bottom : undefined
+            top: parent.top
+            topMargin: root.edgeGapTop
         }
-        horizontalPad: (dateMouse.containsMouse || mediaHover.containsMouse) ? 16 : 13
-        highlighted: dateMouse.containsMouse || mediaHover.containsMouse
 
+        property bool expanded: false
         property var today: new Date()
+
         Timer {
             interval: 60000
             running: true
             repeat: true
-            onTriggered: centerNotch.today = new Date()
+            onTriggered: centerIsland.today = new Date()
         }
 
+        Timer {
+            id: centerCollapseTimer
+            interval: 160
+            onTriggered: {
+                if (!centerHover.hovered) {
+                    centerIsland.expanded = false;
+                    root.keepMediaWhileExpanded = false;
+                }
+            }
+        }
+
+        HoverHandler {
+            id: centerHover
+            onHoveredChanged: {
+                if (hovered) {
+                    centerCollapseTimer.stop();
+                    if (root.isMusicPlaying) root.keepMediaWhileExpanded = true;
+                    centerIsland.today = new Date();
+                    centerIsland.expanded = true;
+                } else {
+                    centerCollapseTimer.restart();
+                }
+            }
+        }
+
+        readonly property real collapsedW: compactIslandRow.implicitWidth + 28
+        readonly property real expandedW: 368
+        readonly property real expandedH: centerExpandedCol.implicitHeight + 28
+
+        width: expanded ? expandedW : collapsedW
+        height: expanded ? expandedH : root.pillHeight
+        radius: expanded ? 26 : root.pillHeight / 2
+        clip: true
+        color: expanded ? root.islandBgHover : root.islandBg
+        border.width: root.showBorder ? 1 : 0
+        border.color: expanded
+            ? ColorUtils.applyAlpha(root.accentColor, 0.35)
+            : Qt.rgba(1, 1, 1, 0.15)
+
+        Behavior on width {
+            NumberAnimation {
+                duration: centerIsland.expanded ? 460 : 300
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: centerIsland.expanded
+                    ? Appearance.animationCurves.expressiveFastSpatial
+                    : Appearance.animationCurves.emphasizedAccel
+            }
+        }
+        Behavior on height {
+            NumberAnimation {
+                duration: centerIsland.expanded ? 480 : 280
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: centerIsland.expanded
+                    ? Appearance.animationCurves.expressiveFastSpatial
+                    : Appearance.animationCurves.emphasizedAccel
+            }
+        }
+        Behavior on radius {
+            NumberAnimation {
+                duration: centerIsland.expanded ? 420 : 260
+                easing.type: Easing.OutCubic
+            }
+        }
+        Behavior on color { ColorAnimation { duration: 180 } }
+        Behavior on border.color { ColorAnimation { duration: 180 } }
+
+        // Inner top glass rim
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: 1
+            radius: Math.max(0, parent.radius - 1)
+            color: "transparent"
+            border.width: 1
+            border.color: Qt.rgba(1, 1, 1, 0.06)
+            z: 30
+        }
+
+        // Scroll volume when hovering media in Dynamic Island
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.NoButton
+            onWheel: wheel => {
+                if (root.showCompactMusic || root.showExpandedMusic) {
+                    if (wheel.angleDelta.y > 0) Audio.incrementVolume();
+                    else if (wheel.angleDelta.y < 0) Audio.decrementVolume();
+                }
+            }
+        }
+
+        // --- COMPACT PILL CONTENT (Date & Time + Live Playing Art/Waveform when music plays) ---
         RowLayout {
-            spacing: 10
+            id: compactIslandRow
+            anchors {
+                top: parent.top
+                horizontalCenter: parent.horizontalCenter
+            }
+            height: root.pillHeight
+            spacing: 8
+            opacity: centerIsland.expanded ? 0 : 1
+            visible: opacity > 0.02
 
-            // Date & Time interactive zone (hover -> frosted Calendar popup, click -> Control Center)
+            Behavior on opacity {
+                NumberAnimation { duration: centerIsland.expanded ? 110 : 220; easing.type: Easing.OutCubic }
+            }
+
+            // Compact Album Art (ONLY shown while music is actively playing)
             Item {
-                id: dateZone
-                visible: root.showClock
+                visible: root.showCompactMusic
                 Layout.alignment: Qt.AlignVCenter
-                implicitWidth: dateRow.implicitWidth + 6
-                implicitHeight: root.notchHeight
+                Layout.preferredWidth: 20
+                Layout.preferredHeight: 20
 
-                RowLayout {
-                    id: dateRow
-                    anchors.centerIn: parent
-                    spacing: 6
-
-                    StyledText {
-                        visible: Config.options.time.showDate
-                        text: Qt.locale().toString(DateTime.clock.date, "ddd d MMM")
-                        font.pixelSize: 12
-                        font.weight: Font.Medium
-                        color: Qt.rgba(1, 1, 1, 0.84)
-                    }
-
-                    Rectangle {
-                        visible: Config.options.time.showDate
-                        Layout.alignment: Qt.AlignVCenter
-                        Layout.preferredWidth: 3
-                        Layout.preferredHeight: 3
-                        radius: 1.5
-                        color: Qt.rgba(1, 1, 1, 0.42)
-                    }
-
-                    StyledText {
-                        text: DateTime.time
-                        font.pixelSize: 12
-                        font.weight: Font.DemiBold
-                        font.features: ({ "tnum": 1 })
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 10
+                    color: ColorUtils.applyAlpha(root.accentColor, 0.32)
+                    MaterialSymbol {
+                        anchors.centerIn: parent
+                        text: "music_note"
+                        iconSize: 12
                         color: "#ffffff"
                     }
-
-                    // Unread notifications dot
-                    Rectangle {
-                        visible: Notifications.unread > 0 && !Notifications.silent
-                        Layout.alignment: Qt.AlignVCenter
-                        Layout.preferredWidth: 5
-                        Layout.preferredHeight: 5
-                        radius: 2.5
-                        color: root.accentColor
-                    }
                 }
 
-                MouseArea {
-                    id: dateMouse
+                Image {
+                    id: compactArt
                     anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: GlobalStates.sidebarRightOpen = !GlobalStates.sidebarRightOpen
+                    source: root.activePlayer?.trackArtUrl ?? ""
+                    fillMode: Image.PreserveAspectCrop
+                    visible: false
+                    asynchronous: true
+                    cache: true
                 }
 
-                ClockWidgetPopup {
-                    hoverTarget: dateMouse
-                    today: centerNotch.today
+                Rectangle {
+                    id: compactArtMask
+                    anchors.fill: parent
+                    radius: 10
+                    visible: false
+                }
+
+                OpacityMask {
+                    anchors.fill: parent
+                    source: compactArt
+                    maskSource: compactArtMask
+                    visible: compactArt.status === Image.Ready
                 }
             }
 
-            // Divider between Date & Now Playing
+            // Date & Time (always centered in idle state)
+            RowLayout {
+                Layout.alignment: Qt.AlignVCenter
+                spacing: 6
+
+                StyledText {
+                    visible: Config.options.time.showDate
+                    text: Qt.locale().toString(DateTime.clock.date, "ddd d MMM")
+                    font.pixelSize: 12
+                    font.weight: Font.Medium
+                    color: Qt.rgba(1, 1, 1, 0.85)
+                }
+
+                Rectangle {
+                    visible: Config.options.time.showDate
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: 3
+                    Layout.preferredHeight: 3
+                    radius: 1.5
+                    color: Qt.rgba(1, 1, 1, 0.42)
+                }
+
+                StyledText {
+                    text: DateTime.time
+                    font.pixelSize: 12
+                    font.weight: Font.DemiBold
+                    font.features: ({ "tnum": 1 })
+                    color: "#ffffff"
+                }
+
+                Rectangle {
+                    visible: Notifications.unread > 0 && !Notifications.silent
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: 5
+                    Layout.preferredHeight: 5
+                    radius: 2.5
+                    color: root.accentColor
+                }
+            }
+
+            // Animated 3-bar Dynamic Island Sound Waveform (ONLY while music is actively playing)
+            Row {
+                visible: root.showCompactMusic
+                Layout.alignment: Qt.AlignVCenter
+                spacing: 2
+
+                Repeater {
+                    model: [
+                        { lo: 4, hi: 13, dur: 420 },
+                        { lo: 6, hi: 15, dur: 330 },
+                        { lo: 4, hi: 11, dur: 490 }
+                    ]
+                    delegate: Rectangle {
+                        required property var modelData
+                        width: 2.5
+                        height: modelData.lo
+                        radius: 1.25
+                        anchors.verticalCenter: parent.verticalCenter
+                        color: root.macGreen
+
+                        SequentialAnimation on height {
+                            running: root.showCompactMusic && !centerIsland.expanded
+                            loops: Animation.Infinite
+                            NumberAnimation { to: modelData.hi; duration: modelData.dur; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: modelData.lo; duration: modelData.dur; easing.type: Easing.InOutSine }
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- EXPANDED DYNAMIC ISLAND CONTENT (Calendar + Tasks + Live Media Player) ---
+        ColumnLayout {
+            id: centerExpandedCol
+            anchors {
+                top: parent.top
+                topMargin: 14
+                horizontalCenter: parent.horizontalCenter
+            }
+            width: centerIsland.expandedW - 28
+            spacing: 11
+            opacity: centerIsland.expanded ? 1 : 0
+            visible: opacity > 0.02
+
+            transform: Translate {
+                y: centerIsland.expanded ? 0 : -12
+                Behavior on y {
+                    NumberAnimation {
+                        duration: 340
+                        easing.type: Easing.BezierSpline
+                        easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
+                    }
+                }
+            }
+
+            Behavior on opacity {
+                NumberAnimation { duration: centerIsland.expanded ? 240 : 110; easing.type: Easing.OutCubic }
+            }
+
+            // Expanded Top Row: Month Year + Live Time & Day Pill
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Row {
+                    spacing: 6
+                    StyledText {
+                        text: Qt.locale().toString(centerIsland.today, "MMMM")
+                        font.pixelSize: 18
+                        font.weight: Font.Bold
+                        color: "#ffffff"
+                    }
+                    StyledText {
+                        text: Qt.locale().toString(centerIsland.today, "yyyy")
+                        font.pixelSize: 18
+                        color: root.fgMuted
+                    }
+                }
+
+                Item { Layout.fillWidth: true }
+
+                StyledText {
+                    text: DateTime.time
+                    font.pixelSize: 13
+                    font.weight: Font.DemiBold
+                    font.features: ({ "tnum": 1 })
+                    color: Qt.rgba(1, 1, 1, 0.90)
+                }
+
+                Rectangle {
+                    Layout.preferredWidth: expDayLabel.implicitWidth + 14
+                    Layout.preferredHeight: 22
+                    radius: 11
+                    color: ColorUtils.applyAlpha(root.accentColor, 0.28)
+                    border.width: 1
+                    border.color: ColorUtils.applyAlpha(root.accentColor, 0.5)
+
+                    StyledText {
+                        id: expDayLabel
+                        anchors.centerIn: parent
+                        text: Qt.locale().toString(centerIsland.today, "dddd")
+                        font.pixelSize: 11
+                        font.weight: Font.DemiBold
+                        color: "#ffffff"
+                    }
+                }
+            }
+
+            // Expanded Now Playing Media Card (ONLY shown when music is playing)
             Rectangle {
-                visible: root.showClock && root.hasMedia
-                Layout.alignment: Qt.AlignVCenter
-                Layout.preferredWidth: 1
-                Layout.preferredHeight: 14
-                radius: 0.5
-                color: Qt.rgba(1, 1, 1, 0.20)
-            }
-
-            // Live Now Playing Media Player inside the Center Notch
-            Item {
-                id: mediaZone
-                visible: root.hasMedia
-                Layout.alignment: Qt.AlignVCenter
-                implicitWidth: mediaRow.implicitWidth
-                implicitHeight: root.notchHeight
-
-                MouseArea {
-                    id: mediaHover
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    acceptedButtons: Qt.NoButton
-                    onWheel: wheel => {
-                        if (wheel.angleDelta.y > 0) Audio.incrementVolume();
-                        else if (wheel.angleDelta.y < 0) Audio.decrementVolume();
-                    }
-                }
+                visible: root.showExpandedMusic
+                Layout.fillWidth: true
+                Layout.preferredHeight: 66
+                radius: 16
+                color: root.innerCardBg
+                border.width: 1
+                border.color: root.innerCardBorder
 
                 RowLayout {
-                    id: mediaRow
-                    anchors.centerIn: parent
-                    spacing: 6
+                    anchors {
+                        fill: parent
+                        leftMargin: 10
+                        rightMargin: 10
+                    }
+                    spacing: 10
 
-                    // Album Art Thumbnail (with rounded mask & icon fallback)
+                    // 46x46 Rounded Album Art
                     Item {
-                        Layout.alignment: Qt.AlignVCenter
-                        Layout.preferredWidth: 19
-                        Layout.preferredHeight: 19
+                        Layout.preferredWidth: 46
+                        Layout.preferredHeight: 46
 
                         Rectangle {
-                            id: artFallback
                             anchors.fill: parent
-                            radius: 5
+                            radius: 10
                             color: ColorUtils.applyAlpha(root.accentColor, 0.28)
-                            border.width: 1
-                            border.color: Qt.rgba(1, 1, 1, 0.18)
-
                             MaterialSymbol {
                                 anchors.centerIn: parent
                                 text: "music_note"
-                                iconSize: 12
+                                iconSize: 22
                                 color: "#ffffff"
                             }
                         }
 
                         Image {
-                            id: notchArtImg
+                            id: expArtImg
                             anchors.fill: parent
                             source: root.activePlayer?.trackArtUrl ?? ""
                             fillMode: Image.PreserveAspectCrop
@@ -417,122 +660,323 @@ Item {
                         }
 
                         Rectangle {
-                            id: notchArtMask
+                            id: expArtMask
                             anchors.fill: parent
-                            radius: 5
+                            radius: 10
                             visible: false
                         }
 
                         OpacityMask {
                             anchors.fill: parent
-                            source: notchArtImg
-                            maskSource: notchArtMask
-                            visible: notchArtImg.status === Image.Ready
-                        }
-
-                        // Tiny green live playing dot on bottom-right of album art
-                        Rectangle {
-                            visible: root.activePlayer?.isPlaying ?? false
-                            anchors {
-                                right: parent.right
-                                bottom: parent.bottom
-                                margins: -1
-                            }
-                            width: 6
-                            height: 6
-                            radius: 3
-                            color: root.macGreen
-                            border.width: 1
-                            border.color: "#12151d"
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.activePlayer?.togglePlaying()
+                            source: expArtImg
+                            maskSource: expArtMask
+                            visible: expArtImg.status === Image.Ready
                         }
                     }
 
-                    // Compact Track Title
-                    StyledText {
-                        id: trackTitleText
-                        Layout.alignment: Qt.AlignVCenter
-                        Layout.maximumWidth: 140
-                        text: root.activePlayer
-                            ? (StringUtils.cleanMusicTitle(root.activePlayer.trackTitle) || root.activePlayer.identity || Translation.tr("Now Playing"))
-                            : ""
-                        font.pixelSize: 12
-                        font.weight: Font.Medium
-                        color: (root.activePlayer?.isPlaying ?? false) ? "#ffffff" : Qt.rgba(1, 1, 1, 0.72)
-                        elide: Text.ElideRight
-                        maximumLineCount: 1
+                    // Track Title + Artist
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 2
 
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.activePlayer?.togglePlaying()
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: root.activePlayer
+                                ? (StringUtils.cleanMusicTitle(root.activePlayer.trackTitle) || Translation.tr("Now Playing"))
+                                : ""
+                            font.pixelSize: 13
+                            font.weight: Font.DemiBold
+                            color: "#ffffff"
+                            elide: Text.ElideRight
+                            maximumLineCount: 1
+                        }
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: root.activePlayer
+                                ? (root.activePlayer.trackArtist || root.activePlayer.identity || "")
+                                : ""
+                            font.pixelSize: 11
+                            color: root.fgMuted
+                            elide: Text.ElideRight
+                            maximumLineCount: 1
                         }
                     }
 
-                    // Compact Inline Media Transport Buttons (Prev / Play-Pause / Next)
+                    // Transport Controls (Prev / Play-Pause / Next)
                     Row {
-                        Layout.alignment: Qt.AlignVCenter
-                        spacing: 1
+                        spacing: 3
 
-                        NotchMediaBtn {
+                        IslandMediaBtn {
                             icon: "skip_previous"
-                            iconSz: 14
+                            iconSz: 18
                             onClicked: root.activePlayer?.previous()
                         }
 
-                        NotchMediaBtn {
+                        IslandMediaBtn {
                             icon: (root.activePlayer?.isPlaying ?? false) ? "pause" : "play_arrow"
-                            iconSz: 15
+                            iconSz: 19
                             filled: true
-                            accent: true
+                            primary: true
                             onClicked: root.activePlayer?.togglePlaying()
                         }
 
-                        NotchMediaBtn {
+                        IslandMediaBtn {
                             icon: "skip_next"
-                            iconSz: 14
+                            iconSz: 18
                             onClicked: root.activePlayer?.next()
                         }
                     }
+                }
+            }
+
+            // 7-Day Calendar Week Strip
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 5
+
+                Repeater {
+                    model: 7
+                    delegate: Rectangle {
+                        required property int index
+
+                        readonly property var date: {
+                            const t = centerIsland.today;
+                            const d = new Date(t);
+                            d.setDate(t.getDate() - t.getDay() + index);
+                            return d;
+                        }
+                        readonly property bool isToday: {
+                            const t = centerIsland.today;
+                            return date.getDate() === t.getDate() &&
+                                   date.getMonth() === t.getMonth() &&
+                                   date.getFullYear() === t.getFullYear();
+                        }
+
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 52
+                        radius: 13
+                        color: isToday ? root.accentColor : root.innerCardBg
+                        border.width: 1
+                        border.color: isToday
+                            ? ColorUtils.applyAlpha(root.accentColor, 0.9)
+                            : root.innerCardBorder
+
+                        ColumnLayout {
+                            anchors.centerIn: parent
+                            spacing: 2
+
+                            StyledText {
+                                Layout.alignment: Qt.AlignHCenter
+                                text: Qt.locale().toString(date, "ddd").slice(0, 2)
+                                font.pixelSize: 10
+                                font.weight: isToday ? Font.DemiBold : Font.Medium
+                                color: isToday ? Qt.rgba(1, 1, 1, 0.88) : root.fgMuted
+                            }
+
+                            StyledText {
+                                Layout.alignment: Qt.AlignHCenter
+                                text: date.getDate()
+                                font.pixelSize: isToday ? 14 : 13
+                                font.weight: isToday ? Font.Bold : Font.Medium
+                                font.features: ({ "tnum": 1 })
+                                color: "#ffffff"
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Tasks Card inside Dynamic Island
+            Rectangle {
+                Layout.fillWidth: true
+                implicitHeight: tasksInnerRow.implicitHeight + 14
+                radius: 14
+                color: root.innerCardBg
+                border.width: 1
+                border.color: root.innerCardBorder
+
+                RowLayout {
+                    id: tasksInnerRow
+                    anchors {
+                        fill: parent
+                        margins: 7
+                    }
+                    spacing: 10
+
+                    Rectangle {
+                        Layout.preferredWidth: 32
+                        Layout.preferredHeight: 32
+                        radius: 10
+                        color: ColorUtils.applyAlpha(root.accentColor, 0.24)
+
+                        MaterialSymbol {
+                            anchors.centerIn: parent
+                            text: "checklist"
+                            iconSize: 17
+                            color: "#ffffff"
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 3
+
+                        Repeater {
+                            model: Math.min(2, Todo.list.filter(t => !t.done).length)
+                            delegate: StyledText {
+                                required property int index
+                                readonly property var filtered: Todo.list.filter(t => !t.done)
+                                readonly property var todo: filtered[filtered.length - 1 - index]
+                                Layout.fillWidth: true
+                                text: `•  ${todo.content}`
+                                font.pixelSize: 12
+                                color: root.fgColor
+                                elide: Text.ElideRight
+                            }
+                        }
+
+                        StyledText {
+                            visible: Todo.list.filter(t => !t.done).length === 0
+                            text: Translation.tr("No pending tasks")
+                            font.pixelSize: 12
+                            color: root.fgMuted
+                        }
+                    }
+
+                    StyledText {
+                        text: `${Todo.list.filter(t => !t.done).length}`
+                        font.pixelSize: 14
+                        font.weight: Font.Bold
+                        font.features: ({ "tnum": 1 })
+                        color: root.accentColor
+                        Layout.rightMargin: 4
+                    }
+                }
+            }
+
+            // System Uptime Footer
+            RowLayout {
+                Layout.alignment: Qt.AlignHCenter
+                spacing: 6
+
+                MaterialSymbol {
+                    text: "timelapse"
+                    iconSize: 13
+                    color: root.fgMuted
+                }
+
+                StyledText {
+                    text: `${Translation.tr("System Uptime")}  •  ${DateTime.uptime}`
+                    font.pixelSize: 11
+                    color: root.fgMuted
                 }
             }
         }
     }
 
     // ============================================================
-    // RIGHT NOTCH: Tray + Status Icons + Battery + Controls
+    // 3. RIGHT FLOATING PILL / EXPANDABLE BATTERY ISLAND
+    //    - Default: Compact floating pill with Tray + Battery + Controls
+    //    - Hovering Battery: Right Island itself smoothly expands downward
+    //      to reveal Battery details (percentage, time, bar, health, power)
+    //      — NO external BatteryPopup!
     // ============================================================
-    NotchIsland {
-        id: rightNotch
+    Rectangle {
+        id: rightIsland
         visible: root.showTray || root.showBattery || root.showWifi || root.showBluetooth || root.showVolume || root.showSpotlight || root.showControlCenter
+        z: 15
         anchors {
             right: parent.right
-            rightMargin: 12
-            top: Config.options.bar.bottom ? undefined : parent.top
-            bottom: Config.options.bar.bottom ? parent.bottom : undefined
+            rightMargin: root.edgeGapSide
+            top: parent.top
+            topMargin: root.edgeGapTop
         }
-        horizontalPad: 10
 
+        property bool batteryExpanded: false
+
+        Timer {
+            id: batteryCollapseTimer
+            interval: 160
+            onTriggered: {
+                if (!batteryItem.mouseArea.containsMouse && !batteryDetailsHover.hovered) {
+                    rightIsland.batteryExpanded = false;
+                }
+            }
+        }
+
+        readonly property real collapsedW: rightSection.implicitWidth + 18
+        readonly property real expandedW: Math.max(collapsedW, 326)
+        readonly property real expandedH: root.pillHeight + batteryDetailsCol.implicitHeight + 20
+
+        width: batteryExpanded ? expandedW : collapsedW
+        height: batteryExpanded ? expandedH : root.pillHeight
+        radius: batteryExpanded ? 22 : root.pillHeight / 2
+        clip: true
+        color: batteryExpanded ? root.islandBgHover : root.islandBg
+        border.width: root.showBorder ? 1 : 0
+        border.color: batteryExpanded
+            ? ColorUtils.applyAlpha(root.macGreen, 0.35)
+            : Qt.rgba(1, 1, 1, 0.14)
+
+        Behavior on width {
+            NumberAnimation {
+                duration: rightIsland.batteryExpanded ? 440 : 280
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: rightIsland.batteryExpanded
+                    ? Appearance.animationCurves.expressiveFastSpatial
+                    : Appearance.animationCurves.emphasizedAccel
+            }
+        }
+        Behavior on height {
+            NumberAnimation {
+                duration: rightIsland.batteryExpanded ? 460 : 260
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: rightIsland.batteryExpanded
+                    ? Appearance.animationCurves.expressiveFastSpatial
+                    : Appearance.animationCurves.emphasizedAccel
+            }
+        }
+        Behavior on radius {
+            NumberAnimation {
+                duration: rightIsland.batteryExpanded ? 400 : 240
+                easing.type: Easing.OutCubic
+            }
+        }
+        Behavior on color { ColorAnimation { duration: 180 } }
+        Behavior on border.color { ColorAnimation { duration: 180 } }
+
+        // Inner top glass rim
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: 1
+            radius: Math.max(0, parent.radius - 1)
+            color: "transparent"
+            border.width: 1
+            border.color: Qt.rgba(1, 1, 1, 0.06)
+            z: 30
+        }
+
+        // Top Header Row (always pinned to top-right inside the pill)
         RowLayout {
             id: rightSection
+            anchors {
+                top: parent.top
+                right: parent.right
+                rightMargin: 9
+            }
+            height: root.pillHeight
             spacing: 1
 
-            // 1. System Tray
             SysTray {
                 visible: root.showTray && SystemTray.items.values.length > 0
                 Layout.alignment: Qt.AlignVCenter
                 Layout.rightMargin: 2
                 contentColor: root.fgColor
                 contentColorOverridden: true
-                implicitHeight: root.notchHeight
+                implicitHeight: root.pillHeight
             }
 
-            // 2. Recording Indicator
             MenuBarItem {
                 visible: Config.options.bar.utilButtons.isRecording
                 horizontalPad: 5
@@ -547,7 +991,6 @@ Item {
                 }
             }
 
-            // 3. Mic Muted Indicator
             MenuBarItem {
                 visible: Audio.source?.audio?.muted ?? false
                 horizontalPad: 5
@@ -561,7 +1004,6 @@ Item {
                 }
             }
 
-            // 4. Keyboard Layout
             MenuBarItem {
                 id: xkbItem
                 readonly property string layoutCode: (WM.compositor === "niri" ? NiriXkb.currentLayoutCode : HyprlandXkb.currentLayoutCode) ?? ""
@@ -577,12 +1019,25 @@ Item {
                 }
             }
 
-            // 5. Battery with Charging Indicator + Frosted Hover Popup
+            // Battery Trigger — hovering expands rightIsland in-place!
             MenuBarItem {
                 id: batteryItem
                 visible: root.showBattery && Battery.available
                 horizontalPad: 6
+                active: rightIsland.batteryExpanded
                 onClicked: GlobalStates.sidebarRightOpen = !GlobalStates.sidebarRightOpen
+
+                Connections {
+                    target: batteryItem.mouseArea
+                    function onContainsMouseChanged() {
+                        if (batteryItem.mouseArea.containsMouse) {
+                            batteryCollapseTimer.stop();
+                            rightIsland.batteryExpanded = true;
+                        } else {
+                            batteryCollapseTimer.restart();
+                        }
+                    }
+                }
 
                 readonly property real pct: Math.max(0, Math.min(1, Battery.percentage))
                 readonly property int pctInt: Math.round(pct * 100)
@@ -661,13 +1116,8 @@ Item {
                         }
                     }
                 }
-
-                BatteryPopup {
-                    hoverTarget: batteryItem.mouseArea
-                }
             }
 
-            // 6. Wi-Fi / Network Icon
             MenuBarItem {
                 visible: root.showWifi
                 horizontalPad: 5
@@ -684,7 +1134,6 @@ Item {
                 }
             }
 
-            // 7. Bluetooth Icon
             MenuBarItem {
                 visible: root.showBluetooth && BluetoothStatus.available
                 horizontalPad: 5
@@ -703,7 +1152,6 @@ Item {
                 }
             }
 
-            // 8. Volume Icon
             MenuBarItem {
                 visible: root.showVolume
                 horizontalPad: 5
@@ -727,7 +1175,6 @@ Item {
                 }
             }
 
-            // 9. Spotlight Search Icon
             MenuBarItem {
                 visible: root.showSpotlight
                 horizontalPad: 5
@@ -742,7 +1189,6 @@ Item {
                 }
             }
 
-            // 10. Iconic macOS Control Center Dual-Toggle Icon
             MenuBarItem {
                 visible: root.showControlCenter
                 horizontalPad: 6
@@ -806,7 +1252,6 @@ Item {
                 }
             }
 
-            // 11. Focus / Do Not Disturb Icon
             MenuBarItem {
                 visible: Notifications.silent
                 horizontalPad: 5
@@ -821,165 +1266,299 @@ Item {
                 }
             }
         }
+
+        // --- IN-PLACE EXPANDED BATTERY DETAILS (Inside Right Island) ---
+        Item {
+            id: batteryDetailsWrap
+            anchors {
+                top: parent.top
+                topMargin: root.pillHeight + 4
+                left: parent.left
+                right: parent.right
+                leftMargin: 14
+                rightMargin: 14
+            }
+            height: batteryDetailsCol.implicitHeight + 12
+            opacity: rightIsland.batteryExpanded ? 1 : 0
+            visible: opacity > 0.02
+
+            transform: Translate {
+                y: rightIsland.batteryExpanded ? 0 : -10
+                Behavior on y {
+                    NumberAnimation {
+                        duration: 320
+                        easing.type: Easing.BezierSpline
+                        easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
+                    }
+                }
+            }
+
+            Behavior on opacity {
+                NumberAnimation { duration: rightIsland.batteryExpanded ? 230 : 100; easing.type: Easing.OutCubic }
+            }
+
+            HoverHandler {
+                id: batteryDetailsHover
+                onHoveredChanged: {
+                    if (hovered) {
+                        batteryCollapseTimer.stop();
+                        rightIsland.batteryExpanded = true;
+                    } else {
+                        batteryCollapseTimer.restart();
+                    }
+                }
+            }
+
+            readonly property bool healthKnown: Battery.health > 0
+            readonly property bool showTime: !(Battery.chargeState == 4
+                || (Battery.isCharging ? Battery.timeToFull : Battery.timeToEmpty) <= 0
+                || Battery.energyRate <= 0.01)
+
+            ColumnLayout {
+                id: batteryDetailsCol
+                width: parent.width
+                spacing: 10
+
+                // Subtle divider between top pill row & expanded battery panel
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 1
+                    color: Qt.rgba(1, 1, 1, 0.12)
+                }
+
+                // Battery Header: Icon + Status + Giant %
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 10
+
+                    Rectangle {
+                        Layout.preferredWidth: 36
+                        Layout.preferredHeight: 36
+                        radius: 12
+                        color: (batteryItem.charging || batteryItem.pluggedIn)
+                            ? ColorUtils.applyAlpha(root.macGreen, 0.22)
+                            : (batteryItem.low
+                                ? ColorUtils.applyAlpha(root.macRed, 0.22)
+                                : ColorUtils.applyAlpha(root.accentColor, 0.22))
+
+                        MaterialSymbol {
+                            anchors.centerIn: parent
+                            text: (batteryItem.charging || batteryItem.pluggedIn) ? "battery_charging_full" : "battery_full"
+                            iconSize: 20
+                            color: (batteryItem.charging || batteryItem.pluggedIn)
+                                ? root.macGreen
+                                : (batteryItem.low ? root.macRed : "#ffffff")
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 1
+
+                        StyledText {
+                            text: Translation.tr("Battery")
+                            font.pixelSize: 14
+                            font.weight: Font.Bold
+                            color: "#ffffff"
+                        }
+
+                        StyledText {
+                            font.pixelSize: 11
+                            color: root.fgMuted
+                            text: {
+                                if (Battery.chargeState == 4)
+                                    return Translation.tr("Fully charged");
+                                if (Battery.isCharging)
+                                    return Translation.tr("Charging") + (batteryDetailsWrap.showTime ? " · " + root.formatBatteryTime(Battery.timeToFull) : "");
+                                return Translation.tr("Remaining") + (batteryDetailsWrap.showTime ? " · " + root.formatBatteryTime(Battery.timeToEmpty) : "");
+                            }
+                        }
+                    }
+
+                    StyledText {
+                        text: `${batteryItem.pctInt}%`
+                        font.pixelSize: 22
+                        font.weight: Font.Bold
+                        font.features: ({ "tnum": 1 })
+                        color: (batteryItem.charging || batteryItem.pluggedIn)
+                            ? root.macGreen
+                            : (batteryItem.low ? root.macRed : "#ffffff")
+                    }
+                }
+
+                // Animated horizontal charge progress bar
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 7
+                    radius: 3.5
+                    color: Qt.rgba(1, 1, 1, 0.12)
+
+                    Rectangle {
+                        anchors {
+                            left: parent.left
+                            top: parent.top
+                            bottom: parent.bottom
+                        }
+                        width: Math.max(7, parent.width * batteryItem.pct)
+                        radius: 3.5
+                        color: (batteryItem.charging || batteryItem.pluggedIn)
+                            ? root.macGreen
+                            : (batteryItem.low ? root.macRed : root.accentColor)
+
+                        Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                    }
+                }
+
+                // 2 Side-by-Side Stat Cards: Health & Power Draw
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: 1
+                        Layout.preferredHeight: 62
+                        radius: 14
+                        color: root.innerCardBg
+                        border.width: 1
+                        border.color: root.innerCardBorder
+
+                        ColumnLayout {
+                            anchors {
+                                fill: parent
+                                margins: 9
+                            }
+                            spacing: 2
+
+                            RowLayout {
+                                spacing: 5
+                                MaterialSymbol {
+                                    text: "favorite"
+                                    fill: 1
+                                    iconSize: 13
+                                    color: root.macGreen
+                                }
+                                StyledText {
+                                    text: Translation.tr("Health")
+                                    font.pixelSize: 11
+                                    color: root.fgMuted
+                                }
+                            }
+
+                            StyledText {
+                                text: batteryDetailsWrap.healthKnown ? `${Math.round(Battery.health)}%` : "—"
+                                font.pixelSize: 15
+                                font.weight: Font.Bold
+                                font.features: ({ "tnum": 1 })
+                                color: "#ffffff"
+                            }
+
+                            StyledText {
+                                text: Battery.chargeCycles > 0
+                                    ? `${Battery.chargeCycles} ${Translation.tr("cycles")}`
+                                    : Translation.tr("Good condition")
+                                font.pixelSize: 10
+                                color: root.fgMuted
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: 1
+                        Layout.preferredHeight: 62
+                        radius: 14
+                        color: root.innerCardBg
+                        border.width: 1
+                        border.color: root.innerCardBorder
+
+                        ColumnLayout {
+                            anchors {
+                                fill: parent
+                                margins: 9
+                            }
+                            spacing: 2
+
+                            RowLayout {
+                                spacing: 5
+                                MaterialSymbol {
+                                    text: "bolt"
+                                    fill: 1
+                                    iconSize: 13
+                                    color: root.macOrange
+                                }
+                                StyledText {
+                                    text: Battery.isCharging ? Translation.tr("Charge rate") : Translation.tr("Power draw")
+                                    font.pixelSize: 11
+                                    color: root.fgMuted
+                                }
+                            }
+
+                            StyledText {
+                                text: Battery.chargeState == 4 ? "0.0 W" : `${Battery.energyRate.toFixed(1)} W`
+                                font.pixelSize: 15
+                                font.weight: Font.Bold
+                                font.features: ({ "tnum": 1 })
+                                color: "#ffffff"
+                            }
+
+                            StyledText {
+                                text: Battery.chargeState == 4
+                                    ? Translation.tr("Full")
+                                    : (Battery.isCharging ? Translation.tr("Plugged in") : Translation.tr("On battery"))
+                                font.pixelSize: 10
+                                color: root.fgMuted
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // ============================================================
-    // REUSABLE TOP-EDGE ROUNDED NOTCH ISLAND (Left, Center, Right)
+    // MEDIA BUTTON FOR EXPANDED DYNAMIC ISLAND
     // ============================================================
-    component NotchIsland: Item {
-        id: islandRoot
-        default property alias content: islandContent.data
-        property real horizontalPad: 12
-        property real filletR: 9
-        property bool highlighted: false
-        readonly property color fillCol: highlighted ? root.notchHoverColor : root.notchBaseColor
-
-        width: islandContent.implicitWidth + horizontalPad * 2
-        height: root.notchHeight
-
-        Behavior on width {
-            NumberAnimation { duration: 240; easing.type: Easing.OutCubic }
-        }
-
-        // Left concave shoulder fillet
-        Shape {
-            visible: !Config.options.bar.bottom
-            x: -islandRoot.filletR
-            y: 0
-            width: islandRoot.filletR
-            height: islandRoot.filletR
-            layer.enabled: true
-            layer.samples: 4
-
-            ShapePath {
-                fillColor: islandRoot.fillCol
-                strokeWidth: -1
-                startX: islandRoot.filletR
-                startY: 0
-                PathLine { x: 0; y: 0 }
-                PathArc {
-                    x: islandRoot.filletR
-                    y: islandRoot.filletR
-                    radiusX: islandRoot.filletR
-                    radiusY: islandRoot.filletR
-                    direction: PathArc.Clockwise
-                }
-                PathLine { x: islandRoot.filletR; y: 0 }
-            }
-        }
-
-        // Right concave shoulder fillet
-        Shape {
-            visible: !Config.options.bar.bottom
-            x: islandRoot.width
-            y: 0
-            width: islandRoot.filletR
-            height: islandRoot.filletR
-            layer.enabled: true
-            layer.samples: 4
-
-            ShapePath {
-                fillColor: islandRoot.fillCol
-                strokeWidth: -1
-                startX: 0
-                startY: 0
-                PathLine { x: islandRoot.filletR; y: 0 }
-                PathArc {
-                    x: 0
-                    y: islandRoot.filletR
-                    radiusX: islandRoot.filletR
-                    radiusY: islandRoot.filletR
-                    direction: PathArc.Counterclockwise
-                }
-                PathLine { x: 0; y: 0 }
-            }
-        }
-
-        // Main rounded notch body
-        Rectangle {
-            anchors.fill: parent
-            topLeftRadius: Config.options.bar.bottom ? 13 : 0
-            topRightRadius: Config.options.bar.bottom ? 13 : 0
-            bottomLeftRadius: Config.options.bar.bottom ? 0 : 13
-            bottomRightRadius: Config.options.bar.bottom ? 0 : 13
-            color: islandRoot.fillCol
-
-            Behavior on color { ColorAnimation { duration: 150 } }
-
-            // Subtle specular rim along bottom & sides
-            Rectangle {
-                visible: root.showBorder
-                anchors {
-                    fill: parent
-                    topMargin: Config.options.bar.bottom ? 0 : -1
-                    bottomMargin: Config.options.bar.bottom ? -1 : 0
-                }
-                topLeftRadius: parent.topLeftRadius
-                topRightRadius: parent.topRightRadius
-                bottomLeftRadius: parent.bottomLeftRadius
-                bottomRightRadius: parent.bottomRightRadius
-                color: "transparent"
-                border.width: 1
-                border.color: islandRoot.highlighted
-                    ? ColorUtils.applyAlpha(root.accentColor, 0.45)
-                    : Qt.rgba(1, 1, 1, 0.13)
-
-                Behavior on border.color { ColorAnimation { duration: 150 } }
-            }
-
-            Row {
-                id: islandContent
-                anchors.centerIn: parent
-                anchors.verticalCenterOffset: Config.options.bar.bottom ? 1 : -1
-            }
-        }
-    }
-
-    // ============================================================
-    // COMPACT MEDIA TRANSPORT BUTTON FOR CENTER NOTCH
-    // ============================================================
-    component NotchMediaBtn: Item {
-        id: mediaBtn
+    component IslandMediaBtn: Item {
+        id: mBtn
         property string icon: ""
-        property int iconSz: 14
+        property int iconSz: 18
         property bool filled: false
-        property bool accent: false
+        property bool primary: false
         signal clicked()
 
-        width: 21
-        height: 21
+        width: primary ? 32 : 28
+        height: primary ? 32 : 28
 
         Rectangle {
             anchors.fill: parent
-            radius: 10.5
-            color: btnMouse.pressed
-                ? ColorUtils.applyAlpha(root.accentColor, 0.42)
-                : (btnMouse.containsMouse
-                    ? (mediaBtn.accent ? ColorUtils.applyAlpha(root.accentColor, 0.28) : Qt.rgba(1, 1, 1, 0.16))
-                    : "transparent")
+            radius: width / 2
+            color: mBtn.primary
+                ? (mBtnMouse.pressed ? Qt.rgba(1, 1, 1, 0.78) : (mBtnMouse.containsMouse ? "#ffffff" : Qt.rgba(1, 1, 1, 0.92)))
+                : (mBtnMouse.pressed ? Qt.rgba(1, 1, 1, 0.24) : (mBtnMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.14) : "transparent"))
 
             Behavior on color { ColorAnimation { duration: 110 } }
 
             MaterialSymbol {
                 anchors.centerIn: parent
-                text: mediaBtn.icon
-                iconSize: mediaBtn.iconSz
-                fill: mediaBtn.filled ? 1 : 0
-                color: "#ffffff"
+                text: mBtn.icon
+                iconSize: mBtn.iconSz
+                fill: mBtn.filled ? 1 : 0
+                color: mBtn.primary ? "#11141c" : "#ffffff"
             }
         }
 
         MouseArea {
-            id: btnMouse
+            id: mBtnMouse
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: mediaBtn.clicked()
+            onClicked: mBtn.clicked()
         }
     }
 
     // ============================================================
-    // REUSABLE NOTCH ITEM WRAPPER
+    // REUSABLE PILL ITEM WRAPPER
     // ============================================================
     component MenuBarItem: Item {
         id: itemRoot
@@ -996,15 +1575,15 @@ Item {
 
         Layout.alignment: Qt.AlignVCenter
         implicitWidth: innerContainer.implicitWidth + horizontalPad * 2
-        implicitHeight: root.notchHeight
+        implicitHeight: root.pillHeight
 
         Rectangle {
             anchors {
                 fill: parent
-                topMargin: 5
-                bottomMargin: 5
+                topMargin: 4
+                bottomMargin: 4
             }
-            radius: 6
+            radius: 12
             color: itemRoot.active
                 ? root.activeBg
                 : (itemMouse.pressed

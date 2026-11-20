@@ -85,6 +85,9 @@ Item {
 
 
     readonly property bool isMacosBar: Config.options.bar.cornerStyle === 7
+    readonly property Item macLeftIsland: macMenuBarLoader.item?.leftIslandItem ?? null
+    readonly property Item macCenterIsland: macMenuBarLoader.item?.centerIslandItem ?? null
+    readonly property Item macRightIsland: macMenuBarLoader.item?.rightIslandItem ?? null
 
     Loader {
         id: macMenuBarLoader
