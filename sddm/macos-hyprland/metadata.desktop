@@ -1,0 +1,16 @@
+[SddmGreeterTheme]
+Name=macOS Hyprland
+Description=macOS-inspired frosted glass SDDM login theme matching the Hyprlock desktop setup
+Author=satyajitkalita875-rgb
+Copyright=(c) 2026
+License=MIT
+Type=sddm-theme
+Version=1.0
+Website=https://github.com/satyajitkalita875-rgb/macos-hyprland-dots
+Screenshot=
+MainScript=Main.qml
+ConfigFile=theme.conf
+TranslationsDirectory=translations
+Theme-Id=macos-hyprland
+Theme-API=2.0
+QtVersion=6

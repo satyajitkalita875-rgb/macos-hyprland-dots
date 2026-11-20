@@ -7,7 +7,7 @@ A cohesive macOS-inspired desktop setup for **Hyprland** (HyprLua 0.57+) and **Q
 - **macOS Control Center**: Floating top-right frosted glass bento popover with Connectivity (Wi-Fi, Bluetooth, VPN) and smooth inline drill-down sub-pages, Focus/Do Not Disturb, Night Shift, Light/Dark Mode toggle, Display & Sound sliders, Now Playing media controls, Quick Utilities, and Notifications drawer.
 - **macOS Tahoe App Drawer**: Floating frosted glass application launcher with live XDG + Flatpak app discovery (`scan-apps.py`) and full-color high-res app icons (no restart needed after installing apps).
 - **Floating Dock**: macOS-style floating dock with minimize-to-dock (`special:minimized`) and window previews.
-- **macOS Lock Screen & Idle**: Custom frosted-glass `hyprlock` (giant clock, battery badge, user avatar, pill password field) and `hypridle` auto-dim/lock/DPMS power management.
+- **macOS Lock Screen, Idle & Login Manager (SDDM)**: Custom frosted-glass `hyprlock` (giant clock, battery badge, user avatar, pill password field), `hypridle` auto-dim/lock/DPMS power management, and a matching Qt6 **SDDM** display manager theme (`sddm/macos-hyprland`) installed via `install-sddm.sh`.
 - **Unified Material You Glass UI**: Consistent translucent Material You colors, RE2-compliant Hyprland frosted glass blur rules (`shellOverrides/blur.lua`), and macOS left-aligned GTK window buttons (`close,minimize,maximize:`).
 - **Cross-Distro Ready (Fedora + Arch/CachyOS)**: Auto-detects UWSM vs direct GDM/SDDM sessions, supports `dnf`/`rpm` on Fedora and `pacman`/`yay`/`paru` on Arch for updates & system info, and ships with a dedicated Fedora bootstrapper (`install-fedora.sh`).
 
@@ -56,6 +56,7 @@ Install dependencies (`hyprland` 0.57+, `hyprlock`, `hypridle`, `quickshell`, `m
 git clone https://github.com/satyajitkalita875-rgb/macos-hyprland-dots.git ~/Projects/macos-hyprland-dots
 cd ~/Projects/macos-hyprland-dots
 ./install.sh
+./install-sddm.sh   # Optional: install & enable the macOS Hyprland SDDM login screen
 ```
 
 `install.sh` backs up any existing configs to `~/.config-backup-<timestamp>`, installs all configs (including GTK3/GTK4 macOS window button layout), downloads the official 6K macOS Tahoe Light wallpaper (from 512 Pixels), syncs Material You colors via `switchwall.sh`, and reloads Hyprland & Quickshell when run inside an active Hyprland session.
