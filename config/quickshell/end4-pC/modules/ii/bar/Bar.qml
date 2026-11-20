@@ -79,7 +79,7 @@ Scope {
                 property int normalExclusiveZone: (Config?.options.bar.autoHide.enable && (!mustShow || !Config?.options.bar.autoHide.pushWindows))
                     ? 0
                     : (barRoot.isMacosBar
-                        ? Appearance.sizes.macosBarHeight
+                        ? (Appearance.sizes.macosBarHeight + 4)
                         : Appearance.sizes.baseBarHeight
                             + (Config.options.bar.cornerStyle === 1 ? Appearance.sizes.hyprlandGapsOut : 0)
                             + (Config.options.bar.cornerStyle === 2 ? -6 : 0))
