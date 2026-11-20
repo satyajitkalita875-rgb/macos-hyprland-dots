@@ -29,25 +29,39 @@ Scope {
             && !Config.options.bar.autoHide.enable
         property bool monitorIsFocused: (Hyprland.focusedMonitor?.id == monitor?.id)
         readonly property bool anyOpen: GlobalStates.overviewOpen || GlobalStates.searchOpen
-        property bool closing: false
-        property bool showSearchContent: GlobalStates.searchOpen
-        property bool showOverviewContent: GlobalStates.overviewOpen
-        visible: anyOpen || closing
+        property bool reallyVisible: false
+        property bool showSearchContent: false
+        property bool showOverviewContent: false
+        visible: reallyVisible
 
-        Timer {
-            id: overviewCloseTimer
-            interval: 260
-            onTriggered: {
-                panelWindow.closing = false;
-                if (!GlobalStates.searchOpen) panelWindow.showSearchContent = false;
-                if (!GlobalStates.overviewOpen) panelWindow.showOverviewContent = false;
-            }
+        function startOpen() {
+            overviewCloseAnim.stop();
+            reallyVisible = true;
+            overviewOpenAnim.restart();
+            Qt.callLater(() => {
+                if (panelWindow.anyOpen) GlobalFocusGrab.addDismissable(panelWindow);
+            });
+        }
+
+        function startClose() {
+            GlobalFocusGrab.removeDismissable(panelWindow);
+            if (!reallyVisible) return;
+            overviewOpenAnim.stop();
+            overviewCloseAnim.restart();
         }
 
         WlrLayershell.namespace: "quickshell:overview"
         WlrLayershell.layer: WlrLayer.Top
         WlrLayershell.keyboardFocus: anyOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
         color: "transparent"
+
+        onVisibleChanged: {
+            if (visible) {
+                GlobalFocusGrab.addDismissable(panelWindow);
+            } else {
+                GlobalFocusGrab.removeDismissable(panelWindow);
+            }
+        }
 
         // While a window preview is being dragged, take input over the whole screen.
         // Otherwise the pointer leaves the mask, Hyprland ends the focus grab and the overview closes.
@@ -70,37 +84,35 @@ Scope {
             target: GlobalStates
             function onOverviewOpenChanged() {
                 if (GlobalStates.overviewOpen) {
-                    overviewCloseTimer.stop();
-                    panelWindow.closing = false;
+                    const alreadyShown = panelWindow.reallyVisible && !overviewCloseAnim.running;
                     panelWindow.showOverviewContent = true;
                     panelWindow.showSearchContent = false;
                     if (GlobalStates.searchOpen) GlobalStates.searchOpen = false;
-                    GlobalFocusGrab.addDismissable(panelWindow);
+                    if (!alreadyShown) {
+                        panelWindow.startOpen();
+                    }
                 } else if (!GlobalStates.searchOpen) {
-                    panelWindow.closing = true;
-                    overviewCloseTimer.restart();
-                    GlobalFocusGrab.dismiss();
+                    panelWindow.startClose();
                 }
             }
             function onSearchOpenChanged() {
                 if (GlobalStates.searchOpen) {
-                    overviewCloseTimer.stop();
-                    panelWindow.closing = false;
+                    const alreadyShown = panelWindow.reallyVisible && !overviewCloseAnim.running;
                     panelWindow.showSearchContent = true;
                     panelWindow.showOverviewContent = false;
                     if (GlobalStates.overviewOpen) GlobalStates.overviewOpen = false;
                     if (!overviewScope.dontAutoCancelSearch) {
                         searchWidget.cancelSearch();
                     }
-                    GlobalFocusGrab.addDismissable(panelWindow);
+                    if (!alreadyShown) {
+                        panelWindow.startOpen();
+                    }
                     Qt.callLater(() => searchWidget.focusSearchInput());
                 } else {
                     searchWidget.disableExpandAnimation();
                     overviewScope.dontAutoCancelSearch = false;
                     if (!GlobalStates.overviewOpen) {
-                        panelWindow.closing = true;
-                        overviewCloseTimer.restart();
-                        GlobalFocusGrab.dismiss();
+                        panelWindow.startClose();
                     }
                 }
             }
@@ -138,9 +150,8 @@ Scope {
 
         Column {
             id: columnLayout
-            visible: panelWindow.anyOpen || panelWindow.closing
-            opacity: panelWindow.anyOpen ? 1 : 0
-            scale: panelWindow.anyOpen ? 1 : 0.85
+            opacity: 0
+            scale: 0.85
             transformOrigin: Item.Top
             anchors {
                 horizontalCenter: parent.horizontalCenter
@@ -152,29 +163,8 @@ Scope {
             spacing: -8
 
             transform: Translate {
-                y: panelWindow.anyOpen ? 0 : -12
-                Behavior on y {
-                    NumberAnimation {
-                        duration: 260
-                        easing.type: Easing.BezierSpline
-                        easing.bezierCurve: panelWindow.anyOpen
-                            ? Appearance.animationCurves.expressiveFastSpatial
-                            : Appearance.animationCurves.expressiveDefaultSpatial
-                    }
-                }
-            }
-
-            Behavior on opacity {
-                NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
-            }
-            Behavior on scale {
-                NumberAnimation {
-                    duration: 260
-                    easing.type: Easing.BezierSpline
-                    easing.bezierCurve: panelWindow.anyOpen
-                        ? Appearance.animationCurves.expressiveFastSpatial
-                        : Appearance.animationCurves.expressiveDefaultSpatial
-                }
+                id: columnShift
+                y: -12
             }
 
             Keys.onPressed: event => {
@@ -221,6 +211,72 @@ Scope {
                         visible: panelWindow.showOverviewContent
                     }
                 }
+            }
+        }
+
+        ParallelAnimation {
+            id: overviewOpenAnim
+            NumberAnimation {
+                target: columnLayout
+                property: "opacity"
+                from: 0
+                to: 1
+                duration: 200
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Appearance.animationCurves.expressiveEffects
+            }
+            NumberAnimation {
+                target: columnLayout
+                property: "scale"
+                from: 0.85
+                to: 1
+                duration: 260
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
+            }
+            NumberAnimation {
+                target: columnShift
+                property: "y"
+                from: -12
+                to: 0
+                duration: 240
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
+            }
+        }
+
+        ParallelAnimation {
+            id: overviewCloseAnim
+            onFinished: {
+                if (!panelWindow.anyOpen) {
+                    panelWindow.reallyVisible = false;
+                    panelWindow.showSearchContent = false;
+                    panelWindow.showOverviewContent = false;
+                }
+            }
+            NumberAnimation {
+                target: columnLayout
+                property: "opacity"
+                to: 0
+                duration: 200
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Appearance.animationCurves.expressiveEffects
+            }
+            NumberAnimation {
+                target: columnLayout
+                property: "scale"
+                to: 0.85
+                duration: 260
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
+            }
+            NumberAnimation {
+                target: columnShift
+                property: "y"
+                to: -12
+                duration: 240
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
             }
         }
     }

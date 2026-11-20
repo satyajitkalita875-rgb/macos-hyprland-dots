@@ -31,7 +31,15 @@ Scope {
         property bool macClosing: false
         visible: reallyVisible
 
-        Component.onCompleted: reallyVisible = GlobalStates.sidebarRightOpen
+        Component.onCompleted: {
+            reallyVisible = GlobalStates.sidebarRightOpen;
+            if (reallyVisible && root.isMacos) {
+                macAnimContainer.opacity = 1;
+                macScale.xScale = 1;
+                macScale.yScale = 1;
+                macShift.y = 0;
+            }
+        }
 
         Connections {
             target: GlobalStates
@@ -44,7 +52,11 @@ Scope {
                         macCloseAnim.stop();
                         macOpenAnim.restart();
                     }
+                    Qt.callLater(() => {
+                        if (GlobalStates.sidebarRightOpen) GlobalFocusGrab.addDismissable(panelWindow);
+                    });
                 } else if (root.isMacos) {
+                    GlobalFocusGrab.removeDismissable(panelWindow);
                     if (panelWindow.reallyVisible) {
                         panelWindow.macClosing = true;
                         macOpenAnim.stop();
@@ -151,19 +163,19 @@ Scope {
                 y: root.macPadTop
                 width: macContentLoader.item?.implicitWidth ?? 348
                 height: macContentLoader.item?.implicitHeight ?? 520
-                opacity: GlobalStates.sidebarRightOpen ? 1 : 0
+                opacity: 0
 
                 transform: [
                     Scale {
                         id: macScale
                         origin.x: macAnimContainer.width * 0.85
                         origin.y: Config.options.bar.bottom ? macAnimContainer.height : 0
-                        xScale: GlobalStates.sidebarRightOpen ? 1 : 0.8
-                        yScale: GlobalStates.sidebarRightOpen ? 1 : 0.4
+                        xScale: 0.8
+                        yScale: 0.4
                     },
                     Translate {
                         id: macShift
-                        y: GlobalStates.sidebarRightOpen ? 0 : (Config.options.bar.bottom ? 16 : -16)
+                        y: Config.options.bar.bottom ? 14 : -14
                     }
                 ]
 
