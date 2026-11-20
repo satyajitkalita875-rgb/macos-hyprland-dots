@@ -91,7 +91,7 @@ Scope {
                 // Overlay layer only while special workspace sits on top of a fullscreen window on this monitor,
                 // else Top layer so fullscreen apps cover the bar as normal (Hyprland buries Top layer under fullscreen+special).
                 WlrLayershell.layer: (monitorHasFullscreen && monitorHasSpecialOpen) ? WlrLayer.Overlay : WlrLayer.Top
-                implicitHeight: barRoot.isMacosBar ? Appearance.sizes.barHeight : (Appearance.sizes.barHeight + Appearance.rounding.screenRounding)
+                implicitHeight: barRoot.isMacosBar ? (Appearance.sizes.barHeight + 5) : (Appearance.sizes.barHeight + Appearance.rounding.screenRounding)
                 // When Overlay-layer, bar shares a layer with the screen-corner click zones (ScreenCorners.qml)
                 // and same-layer overlap is resolved by stacking, not layer priority - bar was winning and
                 // swallowing the tiny corner-open hit rects. Carve them out of the bar's own mask so clicks
@@ -167,7 +167,7 @@ Scope {
                         anchors {
                             fill: barContent
                             topMargin: -Config.options.bar.autoHide.hoverRegionWidth
-                            bottomMargin: -Config.options.bar.autoHide.hoverRegionWidth
+                            bottomMargin: barRoot.isMacosBar ? -5 : -Config.options.bar.autoHide.hoverRegionWidth
                         }
                     }
 

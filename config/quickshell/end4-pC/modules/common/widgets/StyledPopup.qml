@@ -14,8 +14,8 @@ LazyLoader {
     property Item hoverTarget
     default property Item contentItem
     property real popupBackgroundMargin: 0
-    readonly property bool shouldShow: root.hoverTarget && root.hoverTarget.containsMouse && Config.options.bar.tooltips.enable && !GlobalStates.barStyleEditorOpen
-        && (!Config.options.bar.tooltips.clickToShow || ((root.hoverTarget.pressedButtons ?? Qt.LeftButton) & Qt.LeftButton))
+    readonly property bool shouldShow: Boolean(root.hoverTarget && root.hoverTarget.containsMouse && Config.options.bar.tooltips.enable && !GlobalStates.barStyleEditorOpen
+        && (!Config.options.bar.tooltips.clickToShow || ((root.hoverTarget.pressedButtons ?? Qt.LeftButton) & Qt.LeftButton)))
     property bool closing: false
     active: root.shouldShow || root.closing
     onShouldShowChanged: if (!root.shouldShow && root.item) root.closing = true
@@ -310,7 +310,7 @@ LazyLoader {
                 implicitWidth: (popupWindow.innerContent?.implicitWidth ?? 0) + margin * 2
                 implicitHeight: (popupWindow.innerContent?.implicitHeight ?? 0) + margin * 2
 
-                color: Appearance.colors.colUiPopupBackground
+                color: Appearance.colors.colUiBackground
                 radius: Appearance.rounding.large + 5
                 topLeftRadius: popupWindow.flat("tl") ? 0 : radius
                 topRightRadius: popupWindow.flat("tr") ? 0 : radius
@@ -318,6 +318,18 @@ LazyLoader {
                 bottomRightRadius: popupWindow.flat("br") ? 0 : radius
                 border.width: root.morph ? 0 : 1
                 border.color: Appearance.colors.colLayer0Border
+
+                // Subtle inner rim highlight matching macOS frosted glass panels
+                Rectangle {
+                    visible: !root.morph
+                    anchors.fill: parent
+                    anchors.margins: 1
+                    radius: Math.max(0, parent.radius - 1)
+                    color: "transparent"
+                    border.width: 1
+                    border.color: Appearance.m3colors.darkmode ? Qt.rgba(1, 1, 1, 0.06) : Qt.rgba(1, 1, 1, 0.52)
+                    z: 20
+                }
 
                 Fillet {
                     visible: root.morph

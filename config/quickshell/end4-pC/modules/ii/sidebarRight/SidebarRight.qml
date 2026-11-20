@@ -17,17 +17,18 @@ Scope {
         ? Config.options.bar.frameThickness
         : Appearance.sizes.barHeight
 
-    // Shadow margins for macOS floating popover (keeps RectangularShadow unclipped without bleeding blur)
+    // Shadow & spring bounce margins for macOS floating popover
     readonly property int macPadLeft: 26
     readonly property int macPadRight: 10
     readonly property int macPadTop: 8
-    readonly property int macPadBottom: 28
+    readonly property int macPadBottom: 42
 
     PanelWindow {
         id: panelWindow
 
         readonly property bool animatedEntrance: !root.isMacos && WM.compositor !== "hyprland"
         property bool reallyVisible: false
+        property bool macClosing: false
         visible: reallyVisible
 
         Component.onCompleted: reallyVisible = GlobalStates.sidebarRightOpen
@@ -37,7 +38,18 @@ Scope {
             function onSidebarRightOpenChanged() {
                 if (GlobalStates.sidebarRightOpen) {
                     closeAnimTimer.stop();
+                    panelWindow.macClosing = false;
                     panelWindow.reallyVisible = true;
+                    if (root.isMacos) {
+                        macCloseAnim.stop();
+                        macOpenAnim.restart();
+                    }
+                } else if (root.isMacos) {
+                    if (panelWindow.reallyVisible) {
+                        panelWindow.macClosing = true;
+                        macOpenAnim.stop();
+                        macCloseAnim.restart();
+                    }
                 } else if (panelWindow.animatedEntrance) {
                     closeAnimTimer.restart();
                 } else {
@@ -121,7 +133,7 @@ Scope {
         }
 
         // ============================================================
-        // MACOS FLOATING CONTROL CENTER
+        // MACOS FLOATING CONTROL CENTER (same bouncy spring popup animation as Battery & Date popups)
         // ============================================================
         Item {
             anchors.fill: parent
@@ -133,23 +145,126 @@ Scope {
                 onClicked: panelWindow.hide()
             }
 
-            Loader {
-                id: macContentLoader
-                active: root.isMacos && (panelWindow.reallyVisible || Config?.options.sidebar.keepRightSidebarLoaded)
+            Item {
+                id: macAnimContainer
                 x: root.macPadLeft
                 y: root.macPadTop
-                focus: root.isMacos && GlobalStates.sidebarRightOpen
+                width: macContentLoader.item?.implicitWidth ?? 348
+                height: macContentLoader.item?.implicitHeight ?? 520
+                opacity: GlobalStates.sidebarRightOpen ? 1 : 0
 
-                Keys.onPressed: event => {
-                    if (event.key === Qt.Key_Escape) {
-                        if (!item || !item.handleEscape()) {
-                            panelWindow.hide();
+                transform: [
+                    Scale {
+                        id: macScale
+                        origin.x: macAnimContainer.width * 0.85
+                        origin.y: Config.options.bar.bottom ? macAnimContainer.height : 0
+                        xScale: GlobalStates.sidebarRightOpen ? 1 : 0.8
+                        yScale: GlobalStates.sidebarRightOpen ? 1 : 0.4
+                    },
+                    Translate {
+                        id: macShift
+                        y: GlobalStates.sidebarRightOpen ? 0 : (Config.options.bar.bottom ? 16 : -16)
+                    }
+                ]
+
+                Loader {
+                    id: macContentLoader
+                    active: root.isMacos && (panelWindow.reallyVisible || Config?.options.sidebar.keepRightSidebarLoaded)
+                    focus: root.isMacos && GlobalStates.sidebarRightOpen
+
+                    Keys.onPressed: event => {
+                        if (event.key === Qt.Key_Escape) {
+                            if (!item || !item.handleEscape()) {
+                                panelWindow.hide();
+                            }
+                            event.accepted = true;
                         }
-                        event.accepted = true;
+                    }
+
+                    sourceComponent: MacControlCenter {}
+                }
+            }
+
+            ParallelAnimation {
+                id: macOpenAnim
+                NumberAnimation {
+                    target: macScale
+                    property: "yScale"
+                    from: 0.4
+                    to: 1
+                    duration: 500
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
+                }
+                NumberAnimation {
+                    target: macScale
+                    property: "xScale"
+                    from: 0.8
+                    to: 1
+                    duration: Appearance.animationCurves.expressiveDefaultSpatialDuration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
+                }
+                NumberAnimation {
+                    target: macAnimContainer
+                    property: "opacity"
+                    from: 0
+                    to: 1
+                    duration: Appearance.animationCurves.expressiveEffectsDuration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Appearance.animationCurves.expressiveEffects
+                }
+                NumberAnimation {
+                    target: macShift
+                    property: "y"
+                    from: Config.options.bar.bottom ? 16 : -16
+                    to: 0
+                    duration: Appearance.animationCurves.expressiveDefaultSpatialDuration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
+                }
+            }
+
+            ParallelAnimation {
+                id: macCloseAnim
+                onFinished: {
+                    panelWindow.macClosing = false;
+                    if (!GlobalStates.sidebarRightOpen) {
+                        panelWindow.reallyVisible = false;
                     }
                 }
-
-                sourceComponent: MacControlCenter {}
+                NumberAnimation {
+                    target: macScale
+                    property: "yScale"
+                    to: 0.4
+                    duration: 220
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
+                }
+                NumberAnimation {
+                    target: macScale
+                    property: "xScale"
+                    to: 0.85
+                    duration: 220
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
+                }
+                NumberAnimation {
+                    target: macAnimContainer
+                    property: "opacity"
+                    to: 0
+                    duration: 200
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
+                }
+                NumberAnimation {
+                    target: macShift
+                    property: "y"
+                    to: Config.options.bar.bottom ? 10 : -10
+                    duration: 200
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
+                }
             }
         }
 

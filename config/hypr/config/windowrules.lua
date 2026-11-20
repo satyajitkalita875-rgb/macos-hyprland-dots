@@ -144,12 +144,24 @@ hl.layer_rule({
   blur_popups = true,
 })
 
--- App Drawer & macOS Control Center frosted glass blur (uses native Hyprland layer animations so blur & opacity fade together smoothly)
+-- App Drawer frosted glass blur (native Hyprland layer animations)
 hl.layer_rule({
-  name = "quickshell-macos-popovers",
+  name = "quickshell-app-drawer",
   match = {
-    namespace = "^quickshell:(appDrawer|sidebarRight)$",
+    namespace = "^quickshell:appDrawer$",
   },
+  ignore_alpha = 0.35,
+  blur = true,
+  blur_popups = true,
+})
+
+-- macOS Control Center frosted glass blur (QML spring popup animation matching Battery & Date popups)
+hl.layer_rule({
+  name = "quickshell-control-center",
+  match = {
+    namespace = "^quickshell:sidebarRight$",
+  },
+  no_anim = true,
   ignore_alpha = 0.35,
   blur = true,
   blur_popups = true,

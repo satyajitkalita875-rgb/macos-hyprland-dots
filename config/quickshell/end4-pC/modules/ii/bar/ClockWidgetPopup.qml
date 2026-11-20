@@ -1,5 +1,6 @@
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.functions
 import qs.services
 import QtQuick
 import QtQuick.Layouts
@@ -8,36 +9,65 @@ StyledPopup {
     id: root
     property var today: new Date()
 
-    function usageColor(value) {
-        if (value > 0.9) return Appearance.colors.colError
-        if (value > 0.6) return Appearance.m3colors.m3tertiary
-        return Appearance.colors.colPrimary
-    }
+    readonly property bool dark: Appearance.m3colors.darkmode
+    readonly property color cardFill: Appearance.colors.colLayer1
+    readonly property color cardBorder: ColorUtils.applyAlpha(Appearance.colors.colLayer0Border, dark ? 0.72 : 0.62)
 
     ColumnLayout {
-        spacing: 8
-        width: 340
+        spacing: 10
+        implicitWidth: 348
+        width: 348
 
-        Row {
-            width: parent.width
+        // Month + Year + Live Day Header
+        RowLayout {
+            Layout.preferredWidth: 348
+            Layout.fillWidth: true
+            Layout.leftMargin: 4
+            Layout.rightMargin: 4
+            spacing: 6
 
-            StyledText {
-                text: Qt.locale().toString(root.today, " MMMM")
-                font.pixelSize: Appearance.font.pixelSize.huge
-                font.weight: Font.Bold
-                color: Appearance.colors.colOnLayer1
+            Row {
+                spacing: 6
+                StyledText {
+                    text: Qt.locale().toString(root.today, "MMMM")
+                    font.pixelSize: 19
+                    font.weight: Font.Bold
+                    color: Appearance.colors.colOnLayer0
+                }
+                StyledText {
+                    text: Qt.locale().toString(root.today, "yyyy")
+                    font.pixelSize: 19
+                    font.weight: Font.Normal
+                    color: Appearance.colors.colSubtext
+                }
             }
 
-            StyledText {
-                text: " " + Qt.locale().toString(root.today, "yyyy")
-                font.pixelSize: Appearance.font.pixelSize.huge
-                color: Appearance.colors.colOnSurfaceVariant
+            Item { Layout.fillWidth: true }
+
+            Rectangle {
+                implicitWidth: dayBadgeText.implicitWidth + 14
+                implicitHeight: 22
+                radius: 11
+                color: ColorUtils.applyAlpha(Appearance.colors.colPrimary, root.dark ? 0.22 : 0.14)
+                border.width: 1
+                border.color: ColorUtils.applyAlpha(Appearance.colors.colPrimary, 0.30)
+
+                StyledText {
+                    id: dayBadgeText
+                    anchors.centerIn: parent
+                    text: Qt.locale().toString(root.today, "dddd")
+                    font.pixelSize: 11
+                    font.weight: Font.DemiBold
+                    color: Appearance.colors.colPrimary
+                }
             }
         }
 
+        // 7-Day Week Strip matching macOS frosted glass tiles
         RowLayout {
-            width: parent.width
-            spacing: 4
+            Layout.preferredWidth: 348
+            Layout.fillWidth: true
+            spacing: 5
 
             Repeater {
                 model: 7
@@ -59,11 +89,15 @@ StyledPopup {
                     }
 
                     Layout.fillWidth: true
-                    height: 56
-                    radius: Appearance.rounding.normal
+                    Layout.preferredHeight: 54
+                    radius: 14
                     color: isToday
-                        ? Appearance.colors.colPrimaryContainer
-                        : Appearance.colors.colSurfaceContainerHigh
+                        ? Appearance.colors.colPrimary
+                        : root.cardFill
+                    border.width: 1
+                    border.color: isToday
+                        ? ColorUtils.applyAlpha(Appearance.colors.colPrimary, 0.8)
+                        : root.cardBorder
 
                     ColumnLayout {
                         anchors.centerIn: parent
@@ -72,146 +106,153 @@ StyledPopup {
                         StyledText {
                             Layout.alignment: Qt.AlignHCenter
                             text: Qt.locale().toString(date, "ddd").slice(0, 2)
-                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            font.pixelSize: 11
                             color: isToday
-                                ? Appearance.colors.colPrimary
-                                : Appearance.colors.colOnSurfaceVariant
-                            font.weight: isToday ? Font.Bold : Font.Normal
+                                ? ColorUtils.applyAlpha(Appearance.colors.colOnPrimary, 0.85)
+                                : Appearance.colors.colSubtext
+                            font.weight: isToday ? Font.DemiBold : Font.Medium
                         }
 
                         StyledText {
                             Layout.alignment: Qt.AlignHCenter
                             text: date.getDate()
-                            font.pixelSize: isToday
-                                ? Appearance.font.pixelSize.normal
-                                : Appearance.font.pixelSize.small
-                            font.weight: isToday ? Font.Bold : Font.Normal
+                            font.pixelSize: isToday ? 15 : 13
+                            font.weight: isToday ? Font.Bold : Font.Medium
+                            font.features: ({ "tnum": 1 })
                             color: isToday
-                                ? Appearance.colors.colPrimary
-                                : Appearance.colors.colOnLayer1
+                                ? Appearance.colors.colOnPrimary
+                                : Appearance.colors.colOnLayer0
                         }
                     }
                 }
             }
         }
 
-        Row {
-            width: parent.width
-            spacing: 6
-
-            Column {
-                spacing: 2
-                anchors.verticalCenter: parent.verticalCenter
-
-                MaterialShapeWrappedMaterialSymbol {
-                    shape: MaterialShape.Shape.Clover4Leaf
-                    text: "checklist"
-                    iconSize: Appearance.font.pixelSize.large
-                    implicitSize: 36
-                    color: Appearance.colors.colPrimaryContainer
-                    colSymbol: Appearance.colors.colPrimary
-                }
-
-                StyledText {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    text: `${Todo.list.filter(t => !t.done).length}`
-                    font.pixelSize: Appearance.font.pixelSize.huge
-                    font.weight: Font.Bold
-                    color: Appearance.colors.colPrimary
-                }
-            }
-
-            Column {
-                width: parent.width - 36 - 6
-                spacing: 2
-
-                Repeater {
-                    id: todoRepeater
-                    model: Math.min(3, Todo.list.filter(t => !t.done).length)
-
-                    delegate: Rectangle {
-                        required property int index
-                        readonly property var filteredList: Todo.list.filter(t => !t.done)
-                        readonly property var todo: filteredList[filteredList.length - 1 - index]
-                        readonly property int total: todoRepeater.count
-                        readonly property bool isFirst: index === 0
-                        readonly property bool isLast: index === total - 1
-                        readonly property real bigRadius: Appearance.rounding.normal
-                        readonly property real smallRadius: Appearance.rounding.unsharpenmore
-
-                        width: parent.width
-                        height: 32
-                        topLeftRadius:     isFirst ? bigRadius : smallRadius
-                        topRightRadius:    isFirst ? bigRadius : smallRadius
-                        bottomLeftRadius:  isLast  ? bigRadius : smallRadius
-                        bottomRightRadius: isLast  ? bigRadius : smallRadius
-                        color: Appearance.colors.colSurfaceContainerHigh
-
-                        StyledText {
-                            anchors {
-                                left: parent.left
-                                leftMargin: 10
-                                verticalCenter: parent.verticalCenter
-                                right: parent.right
-                                rightMargin: 10
-                            }
-                            text: `    ${todo.content} `
-                            font.pixelSize: Appearance.font.pixelSize.smaller
-                            color: Appearance.colors.colOnLayer1
-                            elide: Text.ElideRight
-                        }
-                    }
-                }
-
-                Rectangle {
-                    width: parent.width
-                    height: 64
-                    visible: Todo.list.filter(t => !t.done).length === 0
-                    radius: Appearance.rounding.normal
-                    color: Appearance.colors.colSurfaceContainerHigh
-
-                    StyledText {
-                        anchors.centerIn: parent
-                        text: Translation.tr("No pending tasks")
-                        font.pixelSize: Appearance.font.pixelSize.smaller
-                        color: Appearance.colors.colOnLayer1
-                    }
-                }
-            }
-        }
-
+        // Tasks Glass Module Card
         Rectangle {
-            width: parent.width
-            height: 10
-            color: "transparent"
+            Layout.preferredWidth: 348
+            Layout.fillWidth: true
+            implicitHeight: tasksRow.implicitHeight + 16
+            radius: 16
+            color: root.cardFill
+            border.width: 1
+            border.color: root.cardBorder
 
             RowLayout {
-                anchors.centerIn: parent
-                spacing: 6
+                id: tasksRow
+                anchors {
+                    fill: parent
+                    margins: 8
+                }
+                spacing: 10
 
-                MaterialSymbol {
-                    text: "timelapse"
-                    iconSize: Appearance.font.pixelSize.small
-                    color: Appearance.colors.colOnSurfaceVariant
+                // Left task counter badge
+                ColumnLayout {
+                    Layout.alignment: Qt.AlignVCenter
+                    spacing: 2
+
+                    Rectangle {
+                        Layout.alignment: Qt.AlignHCenter
+                        Layout.preferredWidth: 34
+                        Layout.preferredHeight: 34
+                        radius: 12
+                        color: ColorUtils.applyAlpha(Appearance.colors.colPrimary, root.dark ? 0.24 : 0.14)
+
+                        MaterialSymbol {
+                            anchors.centerIn: parent
+                            text: "checklist"
+                            iconSize: 18
+                            color: Appearance.colors.colPrimary
+                        }
+                    }
+
+                    StyledText {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: `${Todo.list.filter(t => !t.done).length}`
+                        font.pixelSize: 16
+                        font.weight: Font.Bold
+                        font.features: ({ "tnum": 1 })
+                        color: Appearance.colors.colPrimary
+                    }
                 }
 
-                StyledText {
-                    text: Translation.tr("System Uptime")
-                    font.pixelSize: Appearance.font.pixelSize.smaller
-                    color: Appearance.colors.colOnSurfaceVariant
-                }
+                // Right task items or empty state
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 4
 
-                StyledText {
-                    text: "•"
-                    font.pixelSize: Appearance.font.pixelSize.smaller
-                    color: Appearance.colors.colOnSurfaceVariant
-                }
+                    Repeater {
+                        id: todoRepeater
+                        model: Math.min(3, Todo.list.filter(t => !t.done).length)
 
-                StyledText {
-                    text: DateTime.uptime
-                    font.pixelSize: Appearance.font.pixelSize.smaller
-                    color: Appearance.colors.colOnSurfaceVariant
+                        delegate: Rectangle {
+                            required property int index
+                            readonly property var filteredList: Todo.list.filter(t => !t.done)
+                            readonly property var todo: filteredList[filteredList.length - 1 - index]
+
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 28
+                            radius: 9
+                            color: Appearance.colors.colLayer2
+
+                            RowLayout {
+                                anchors {
+                                    fill: parent
+                                    leftMargin: 10
+                                    rightMargin: 10
+                                }
+                                spacing: 7
+
+                                Rectangle {
+                                    Layout.preferredWidth: 5
+                                    Layout.preferredHeight: 5
+                                    radius: 2.5
+                                    color: Appearance.colors.colPrimary
+                                }
+
+                                StyledText {
+                                    Layout.fillWidth: true
+                                    text: todo.content
+                                    font.pixelSize: 12
+                                    color: Appearance.colors.colOnLayer0
+                                    elide: Text.ElideRight
+                                }
+                            }
+                        }
+                    }
+
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 46
+                        visible: Todo.list.filter(t => !t.done).length === 0
+
+                        StyledText {
+                            anchors.centerIn: parent
+                            text: Translation.tr("No pending tasks")
+                            font.pixelSize: 12
+                            color: Appearance.colors.colSubtext
+                        }
+                    }
                 }
+            }
+        }
+
+        // Subtle Uptime Footer
+        RowLayout {
+            Layout.alignment: Qt.AlignHCenter
+            Layout.bottomMargin: 2
+            spacing: 6
+
+            MaterialSymbol {
+                text: "timelapse"
+                iconSize: 13
+                color: Appearance.colors.colSubtext
+            }
+
+            StyledText {
+                text: `${Translation.tr("System Uptime")}  •  ${DateTime.uptime}`
+                font.pixelSize: 11
+                color: Appearance.colors.colSubtext
             }
         }
     }

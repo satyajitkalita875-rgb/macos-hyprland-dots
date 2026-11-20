@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Shapes
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
@@ -270,7 +271,188 @@ Item {
     }
 
     // ============================================================
-    // RIGHT SIDE: Tray + Status Icons + Battery + Controls + Clock
+    // CENTER NOTCH: Date & Time (MacBook Notch / Dynamic Island)
+    // ============================================================
+    Item {
+        id: clockNotch
+        visible: root.showClock
+        z: 10
+        anchors {
+            horizontalCenter: parent.horizontalCenter
+            top: Config.options.bar.bottom ? undefined : parent.top
+            bottom: Config.options.bar.bottom ? parent.bottom : undefined
+        }
+
+        property var today: new Date()
+        Timer {
+            interval: 60000
+            running: true
+            repeat: true
+            onTriggered: clockNotch.today = new Date()
+        }
+
+        readonly property real filletR: 9
+        readonly property real notchPad: notchMouse.containsMouse ? 22 : 17
+        readonly property color notchColor: root.dark
+            ? (notchMouse.containsMouse
+                ? ColorUtils.applyAlpha(ColorUtils.mix("#0d0f14", Appearance.colors.colPrimary, 0.90), 0.96)
+                : ColorUtils.applyAlpha(ColorUtils.mix("#0d0f14", Appearance.colors.colPrimary, 0.94), 0.92))
+            : (notchMouse.containsMouse
+                ? ColorUtils.applyAlpha(ColorUtils.mix("#14171f", Appearance.colors.colPrimary, 0.88), 0.92)
+                : ColorUtils.applyAlpha(ColorUtils.mix("#14171f", Appearance.colors.colPrimary, 0.93), 0.86))
+
+        width: notchContentRow.implicitWidth + notchPad * 2
+        height: root.height + 4
+
+        Behavior on width {
+            NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+        }
+
+        // Left concave notch shoulder fillet
+        Shape {
+            visible: !Config.options.bar.bottom
+            x: -clockNotch.filletR
+            y: 0
+            width: clockNotch.filletR
+            height: clockNotch.filletR
+            layer.enabled: true
+            layer.samples: 4
+
+            ShapePath {
+                fillColor: clockNotch.notchColor
+                strokeWidth: -1
+                startX: clockNotch.filletR
+                startY: 0
+                PathLine { x: 0; y: 0 }
+                PathArc {
+                    x: clockNotch.filletR
+                    y: clockNotch.filletR
+                    radiusX: clockNotch.filletR
+                    radiusY: clockNotch.filletR
+                    direction: PathArc.Clockwise
+                }
+                PathLine { x: clockNotch.filletR; y: 0 }
+            }
+        }
+
+        // Right concave notch shoulder fillet
+        Shape {
+            visible: !Config.options.bar.bottom
+            x: clockNotch.width
+            y: 0
+            width: clockNotch.filletR
+            height: clockNotch.filletR
+            layer.enabled: true
+            layer.samples: 4
+
+            ShapePath {
+                fillColor: clockNotch.notchColor
+                strokeWidth: -1
+                startX: 0
+                startY: 0
+                PathLine { x: clockNotch.filletR; y: 0 }
+                PathArc {
+                    x: 0
+                    y: clockNotch.filletR
+                    radiusX: clockNotch.filletR
+                    radiusY: clockNotch.filletR
+                    direction: PathArc.Counterclockwise
+                }
+                PathLine { x: 0; y: 0 }
+            }
+        }
+
+        // Main Notch Body
+        Rectangle {
+            id: notchBody
+            anchors.fill: parent
+            topLeftRadius: Config.options.bar.bottom ? 13 : 0
+            topRightRadius: Config.options.bar.bottom ? 13 : 0
+            bottomLeftRadius: Config.options.bar.bottom ? 0 : 13
+            bottomRightRadius: Config.options.bar.bottom ? 0 : 13
+            color: clockNotch.notchColor
+
+            Behavior on color { ColorAnimation { duration: 150 } }
+
+            // Subtle glass rim on bottom/sides
+            Rectangle {
+                anchors {
+                    fill: parent
+                    topMargin: Config.options.bar.bottom ? 0 : -1
+                    bottomMargin: Config.options.bar.bottom ? -1 : 0
+                }
+                topLeftRadius: parent.topLeftRadius
+                topRightRadius: parent.topRightRadius
+                bottomLeftRadius: parent.bottomLeftRadius
+                bottomRightRadius: parent.bottomRightRadius
+                color: "transparent"
+                border.width: 1
+                border.color: notchMouse.containsMouse
+                    ? ColorUtils.applyAlpha(Appearance.colors.colPrimary, 0.45)
+                    : Qt.rgba(1, 1, 1, 0.14)
+
+                Behavior on border.color { ColorAnimation { duration: 150 } }
+            }
+
+            RowLayout {
+                id: notchContentRow
+                anchors.centerIn: parent
+                anchors.verticalCenterOffset: Config.options.bar.bottom ? 1 : -1
+                spacing: 7
+
+                StyledText {
+                    visible: Config.options.time.showDate
+                    text: Qt.locale().toString(DateTime.clock.date, "ddd d MMM")
+                    font.pixelSize: 12
+                    font.weight: Font.Medium
+                    color: Qt.rgba(1, 1, 1, 0.84)
+                }
+
+                Rectangle {
+                    visible: Config.options.time.showDate
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: 3
+                    Layout.preferredHeight: 3
+                    radius: 1.5
+                    color: Qt.rgba(1, 1, 1, 0.42)
+                }
+
+                StyledText {
+                    text: DateTime.time
+                    font.pixelSize: 12
+                    font.weight: Font.DemiBold
+                    font.features: ({ "tnum": 1 })
+                    color: "#ffffff"
+                }
+
+                // Unread notifications dot
+                Rectangle {
+                    visible: Notifications.unread > 0 && !Notifications.silent
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: 5
+                    Layout.preferredHeight: 5
+                    radius: 2.5
+                    color: root.accentColor
+                }
+            }
+        }
+
+        MouseArea {
+            id: notchMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: GlobalStates.sidebarRightOpen = !GlobalStates.sidebarRightOpen
+        }
+
+        ClockWidgetPopup {
+            hoverTarget: notchMouse
+            today: clockNotch.today
+        }
+    }
+
+    // ============================================================
+    // RIGHT SIDE: Tray + Status Icons + Battery + Controls
     // ============================================================
     RowLayout {
         id: rightSection
@@ -586,56 +768,6 @@ Item {
                 fill: 1
                 iconSize: 14
                 color: root.fgColor
-            }
-        }
-
-        // 12. Date & Time (Far Right — exact macOS menu bar format + Clock/Calendar popup)
-        MenuBarItem {
-            id: clockItem
-            visible: root.showClock
-            horizontalPad: 8
-            onClicked: GlobalStates.sidebarRightOpen = !GlobalStates.sidebarRightOpen
-
-            property var today: new Date()
-            Timer {
-                interval: 60000
-                running: true
-                repeat: true
-                onTriggered: clockItem.today = new Date()
-            }
-
-            RowLayout {
-                spacing: 6
-
-                StyledText {
-                    visible: Config.options.time.showDate
-                    text: Qt.locale().toString(DateTime.clock.date, "ddd d MMM")
-                    font.pixelSize: 12
-                    font.weight: Font.Medium
-                    color: root.fgColor
-                }
-
-                StyledText {
-                    text: DateTime.time
-                    font.pixelSize: 12
-                    font.weight: Font.Medium
-                    font.features: ({ "tnum": 1 })
-                    color: root.fgColor
-                }
-
-                // Unread notifications dot
-                Rectangle {
-                    visible: Notifications.unread > 0 && !Notifications.silent
-                    width: 5
-                    height: 5
-                    radius: 2.5
-                    color: root.accentColor
-                }
-            }
-
-            ClockWidgetPopup {
-                hoverTarget: clockItem.mouseArea
-                today: clockItem.today
             }
         }
     }
