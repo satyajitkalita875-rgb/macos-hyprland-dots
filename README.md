@@ -29,7 +29,7 @@ A cohesive macOS-inspired desktop setup for **Hyprland** (HyprLua 0.57+) and **Q
 | `Super + Alt + C` | Session / Power menu |
 
 ## Dependencies (Arch / CachyOS)
-- `hyprland` (0.57+ with HyprLua), `quickshell`, `matugen`, `jq`, `python`, `curl`
+- `hyprland` (0.57+ with HyprLua), `hyprlock`, `hypridle`, `quickshell`, `matugen`, `jq`, `python`, `curl`
 - `grim`, `slurp`, `hyprpicker`, `hyprsunset`, `brightnessctl`, `networkmanager`, `bluez`, `pipewire`, `wireplumber`, `upower`
 - Fonts: `Google Sans Flex`, `JetBrains Mono NF`, `Readex Pro`, `Space Grotesk`
 

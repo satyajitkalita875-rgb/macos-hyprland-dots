@@ -4,5 +4,6 @@
 hl.on("hyprland.start", function ()
     hl.exec_cmd("dbus-update-activation-environment --systemd --all")
     hl.exec_cmd("qs -c end4-pC")
+    hl.exec_cmd("hypridle")
     hl.exec_cmd("xhost +SI:localuser:root")
 end)
