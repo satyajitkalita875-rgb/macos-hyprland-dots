@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Effects
 
@@ -354,8 +353,8 @@ Rectangle {
 
             Rectangle {
                 visible: userModel && userModel.count > 1
-                width: 28
-                height: 28
+                Layout.preferredWidth: 28
+                Layout.preferredHeight: 28
                 radius: 14
                 color: prevUserMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.28) : Qt.rgba(1, 1, 1, 0.14)
                 border.width: 1
@@ -376,8 +375,8 @@ Rectangle {
             }
 
             Rectangle {
-                width: 66
-                height: 66
+                Layout.preferredWidth: 66
+                Layout.preferredHeight: 66
                 radius: 33
                 color: Qt.rgba(1, 1, 1, 0.22)
                 border.width: 2
@@ -398,8 +397,8 @@ Rectangle {
 
             Rectangle {
                 visible: userModel && userModel.count > 1
-                width: 28
-                height: 28
+                Layout.preferredWidth: 28
+                Layout.preferredHeight: 28
                 radius: 14
                 color: nextUserMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.28) : Qt.rgba(1, 1, 1, 0.14)
                 border.width: 1
@@ -434,8 +433,8 @@ Rectangle {
         Rectangle {
             visible: root.currentUserName.length === 0
             Layout.alignment: Qt.AlignHCenter
-            width: 248
-            height: 38
+            Layout.preferredWidth: 248
+            Layout.preferredHeight: 38
             radius: 19
             color: Qt.rgba(1, 1, 1, 0.20)
             border.width: 1
@@ -469,8 +468,8 @@ Rectangle {
         // Frosted glass pill password input
         Item {
             Layout.alignment: Qt.AlignHCenter
-            width: 256
-            height: 42
+            Layout.preferredWidth: 256
+            Layout.preferredHeight: 42
 
             Rectangle {
                 id: passwordPill
@@ -592,8 +591,8 @@ Rectangle {
             spacing: 4
             Rectangle {
                 Layout.alignment: Qt.AlignHCenter
-                width: 36
-                height: 36
+                Layout.preferredWidth: 36
+                Layout.preferredHeight: 36
                 radius: 18
                 color: sleepMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.30) : Qt.rgba(1, 1, 1, 0.16)
                 border.width: 1
@@ -628,8 +627,8 @@ Rectangle {
             spacing: 4
             Rectangle {
                 Layout.alignment: Qt.AlignHCenter
-                width: 36
-                height: 36
+                Layout.preferredWidth: 36
+                Layout.preferredHeight: 36
                 radius: 18
                 color: rebootMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.30) : Qt.rgba(1, 1, 1, 0.16)
                 border.width: 1
@@ -664,8 +663,8 @@ Rectangle {
             spacing: 4
             Rectangle {
                 Layout.alignment: Qt.AlignHCenter
-                width: 36
-                height: 36
+                Layout.preferredWidth: 36
+                Layout.preferredHeight: 36
                 radius: 18
                 color: powerMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.30) : Qt.rgba(1, 1, 1, 0.16)
                 border.width: 1
