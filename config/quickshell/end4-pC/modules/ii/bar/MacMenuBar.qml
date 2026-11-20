@@ -25,6 +25,7 @@ Item {
     readonly property Item rightIslandItem: rightIsland
 
     readonly property bool dark: Appearance.m3colors.darkmode
+    readonly property bool glassOn: Config.options?.background?.widgets?.glass?.enable ?? false
     readonly property var macCfg: Config.options?.bar?.macos ?? null
     readonly property bool showBorder: macCfg?.showBorder ?? true
     readonly property bool showLogo: macCfg?.showLogo ?? true
@@ -53,25 +54,24 @@ Item {
     readonly property real edgeGapTop: 6
     readonly property real edgeGapSide: 12
 
-    // Unified iPhone Dynamic Island dark glass palette with subtle Material You tint
-    readonly property color islandBg: dark
-        ? ColorUtils.applyAlpha(ColorUtils.mix("#0b0d12", Appearance.colors.colPrimary, 0.94), 0.92)
-        : ColorUtils.applyAlpha(ColorUtils.mix("#11141c", Appearance.colors.colPrimary, 0.93), 0.88)
-    readonly property color islandBgHover: dark
-        ? ColorUtils.applyAlpha(ColorUtils.mix("#0b0d12", Appearance.colors.colPrimary, 0.90), 0.95)
-        : ColorUtils.applyAlpha(ColorUtils.mix("#11141c", Appearance.colors.colPrimary, 0.89), 0.92)
-    readonly property color innerCardBg: Qt.rgba(1, 1, 1, 0.08)
-    readonly property color innerCardBorder: Qt.rgba(1, 1, 1, 0.12)
+    // Unified Material You Light/Dark frosted glass palette (matches Dock, Control Center, Power Menu & App Drawer)
+    readonly property color islandBg: Appearance.colors.colUiBackground
+    readonly property color islandBorder: Appearance.colors.colLayer0Border
+    readonly property color innerRimColor: dark ? Qt.rgba(1, 1, 1, 0.06) : Qt.rgba(1, 1, 1, 0.55)
+    readonly property color innerCardBg: Appearance.colors.colLayer1
+    readonly property color innerCardBorder: ColorUtils.applyAlpha(Appearance.colors.colLayer0Border, dark ? 0.75 : 0.65)
+    readonly property color dividerColor: ColorUtils.applyAlpha(Appearance.colors.colLayer0Border, 0.60)
 
-    readonly property color fgColor: "#f5f7fa"
-    readonly property color fgMuted: Qt.rgba(1, 1, 1, 0.62)
-    readonly property color hoverBg: Qt.rgba(1, 1, 1, 0.14)
-    readonly property color activeBg: ColorUtils.applyAlpha(Appearance.colors.colPrimary, 0.36)
-    readonly property color activeFg: "#ffffff"
+    readonly property color fgColor: Appearance.colors.colOnLayer0
+    readonly property color fgMuted: Appearance.colors.colSubtext
+    readonly property color hoverBg: Appearance.colors.colLayer1Hover
+    readonly property color activeBg: Appearance.colors.colSecondaryContainer
+    readonly property color activeFg: Appearance.colors.colOnSecondaryContainer
     readonly property color accentColor: Appearance.colors.colPrimary
-    readonly property color macGreen: "#30D158"
-    readonly property color macRed: "#FF5C5C"
-    readonly property color macOrange: "#FF9F0A"
+    readonly property color onAccentColor: Appearance.colors.colOnPrimary
+    readonly property color macGreen: dark ? "#30D158" : "#24B948"
+    readonly property color macRed: Appearance.colors.colError
+    readonly property color macOrange: dark ? "#FF9F0A" : "#E67E00"
 
     readonly property var monitor: WM.monitorFor(root.QsWindow.window?.screen)
     readonly property Toplevel activeWindow: ToplevelManager.activeToplevel
@@ -137,9 +137,28 @@ Item {
         width: leftSection.implicitWidth + 18
         height: root.pillHeight
         radius: height / 2
+        clip: true
         color: root.islandBg
         border.width: root.showBorder ? 1 : 0
-        border.color: Qt.rgba(1, 1, 1, 0.14)
+        border.color: root.islandBorder
+
+        WindowGlass {
+            anchors.fill: parent
+            glassEnabled: root.glassOn
+            cardRadius: parent.radius
+            tint: parent.color
+        }
+
+        // Specular glass inner rim
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: 1
+            radius: Math.max(0, parent.radius - 1)
+            color: "transparent"
+            border.width: 1
+            border.color: root.innerRimColor
+            z: 20
+        }
 
         Behavior on width {
             NumberAnimation {
@@ -198,7 +217,7 @@ Item {
                 Layout.preferredHeight: 3
                 radius: 1.5
                 color: root.fgMuted
-                opacity: 0.65
+                opacity: 0.55
             }
 
             Item {
@@ -245,7 +264,7 @@ Item {
                                     ? root.activeBg
                                     : (wsMouse.containsMouse ? root.hoverBg : "transparent")
                                 border.width: wsItem.isActive ? 1 : 0
-                                border.color: ColorUtils.applyAlpha(root.accentColor, 0.7)
+                                border.color: ColorUtils.applyAlpha(root.accentColor, 0.45)
 
                                 Behavior on color { ColorAnimation { duration: 110 } }
 
@@ -258,7 +277,7 @@ Item {
                                     color: wsItem.isActive
                                         ? root.activeFg
                                         : (wsItem.isOccupied ? root.fgColor : root.fgMuted)
-                                    opacity: wsItem.isActive ? 1.0 : (wsItem.isOccupied ? 0.90 : 0.60)
+                                    opacity: wsItem.isActive ? 1.0 : (wsItem.isOccupied ? 0.88 : 0.58)
                                 }
 
                                 Rectangle {
@@ -272,7 +291,7 @@ Item {
                                     height: 3
                                     radius: 1.5
                                     color: root.fgColor
-                                    opacity: 0.60
+                                    opacity: 0.55
                                 }
                             }
 
@@ -291,11 +310,11 @@ Item {
     }
 
     // ============================================================
-    // 2. CENTER IPHONE DYNAMIC ISLAND (Morphs & Expands In-Place!)
+    // 2. CENTER DYNAMIC ISLAND (Follows Device Material You Theme!)
     //    - Idle: Compact floating pill showing ONLY Date & Time
     //    - Music Playing: Widens with Album Art + Animated Waveform
-    //    - Hovered: Smoothly expands downward showing Calendar, Tasks,
-    //      Uptime & Expanded Media Player (when playing) — NO external popup!
+    //    - Hovered: Smoothly expands downward in-place showing Calendar,
+    //      Tasks, Uptime & Expanded Media Player (when playing)
     // ============================================================
     Rectangle {
         id: centerIsland
@@ -350,11 +369,18 @@ Item {
         height: expanded ? expandedH : root.pillHeight
         radius: expanded ? 26 : root.pillHeight / 2
         clip: true
-        color: expanded ? root.islandBgHover : root.islandBg
+        color: root.islandBg
         border.width: root.showBorder ? 1 : 0
         border.color: expanded
-            ? ColorUtils.applyAlpha(root.accentColor, 0.35)
-            : Qt.rgba(1, 1, 1, 0.15)
+            ? ColorUtils.applyAlpha(root.accentColor, root.dark ? 0.45 : 0.35)
+            : root.islandBorder
+
+        WindowGlass {
+            anchors.fill: parent
+            glassEnabled: root.glassOn
+            cardRadius: parent.radius
+            tint: parent.color
+        }
 
         Behavior on width {
             NumberAnimation {
@@ -380,17 +406,16 @@ Item {
                 easing.type: Easing.OutCubic
             }
         }
-        Behavior on color { ColorAnimation { duration: 180 } }
         Behavior on border.color { ColorAnimation { duration: 180 } }
 
-        // Inner top glass rim
+        // Inner macOS glass rim matching Control Center & Dock
         Rectangle {
             anchors.fill: parent
             anchors.margins: 1
             radius: Math.max(0, parent.radius - 1)
             color: "transparent"
             border.width: 1
-            border.color: Qt.rgba(1, 1, 1, 0.06)
+            border.color: root.innerRimColor
             z: 30
         }
 
@@ -432,12 +457,12 @@ Item {
                 Rectangle {
                     anchors.fill: parent
                     radius: 10
-                    color: ColorUtils.applyAlpha(root.accentColor, 0.32)
+                    color: ColorUtils.applyAlpha(root.accentColor, root.dark ? 0.30 : 0.18)
                     MaterialSymbol {
                         anchors.centerIn: parent
                         text: "music_note"
                         iconSize: 12
-                        color: "#ffffff"
+                        color: root.accentColor
                     }
                 }
 
@@ -476,7 +501,7 @@ Item {
                     text: Qt.locale().toString(DateTime.clock.date, "ddd d MMM")
                     font.pixelSize: 12
                     font.weight: Font.Medium
-                    color: Qt.rgba(1, 1, 1, 0.85)
+                    color: root.fgColor
                 }
 
                 Rectangle {
@@ -485,7 +510,8 @@ Item {
                     Layout.preferredWidth: 3
                     Layout.preferredHeight: 3
                     radius: 1.5
-                    color: Qt.rgba(1, 1, 1, 0.42)
+                    color: root.fgMuted
+                    opacity: 0.60
                 }
 
                 StyledText {
@@ -493,7 +519,7 @@ Item {
                     font.pixelSize: 12
                     font.weight: Font.DemiBold
                     font.features: ({ "tnum": 1 })
-                    color: "#ffffff"
+                    color: root.fgColor
                 }
 
                 Rectangle {
@@ -524,7 +550,7 @@ Item {
                         height: modelData.lo
                         radius: 1.25
                         anchors.verticalCenter: parent.verticalCenter
-                        color: root.macGreen
+                        color: root.accentColor
 
                         SequentialAnimation on height {
                             running: root.showCompactMusic && !centerIsland.expanded
@@ -576,7 +602,7 @@ Item {
                         text: Qt.locale().toString(centerIsland.today, "MMMM")
                         font.pixelSize: 18
                         font.weight: Font.Bold
-                        color: "#ffffff"
+                        color: root.fgColor
                     }
                     StyledText {
                         text: Qt.locale().toString(centerIsland.today, "yyyy")
@@ -592,16 +618,16 @@ Item {
                     font.pixelSize: 13
                     font.weight: Font.DemiBold
                     font.features: ({ "tnum": 1 })
-                    color: Qt.rgba(1, 1, 1, 0.90)
+                    color: root.fgColor
                 }
 
                 Rectangle {
                     Layout.preferredWidth: expDayLabel.implicitWidth + 14
                     Layout.preferredHeight: 22
                     radius: 11
-                    color: ColorUtils.applyAlpha(root.accentColor, 0.28)
+                    color: ColorUtils.applyAlpha(root.accentColor, root.dark ? 0.24 : 0.14)
                     border.width: 1
-                    border.color: ColorUtils.applyAlpha(root.accentColor, 0.5)
+                    border.color: ColorUtils.applyAlpha(root.accentColor, 0.32)
 
                     StyledText {
                         id: expDayLabel
@@ -609,7 +635,7 @@ Item {
                         text: Qt.locale().toString(centerIsland.today, "dddd")
                         font.pixelSize: 11
                         font.weight: Font.DemiBold
-                        color: "#ffffff"
+                        color: root.accentColor
                     }
                 }
             }
@@ -640,12 +666,12 @@ Item {
                         Rectangle {
                             anchors.fill: parent
                             radius: 10
-                            color: ColorUtils.applyAlpha(root.accentColor, 0.28)
+                            color: ColorUtils.applyAlpha(root.accentColor, root.dark ? 0.24 : 0.14)
                             MaterialSymbol {
                                 anchors.centerIn: parent
                                 text: "music_note"
                                 iconSize: 22
-                                color: "#ffffff"
+                                color: root.accentColor
                             }
                         }
 
@@ -686,7 +712,7 @@ Item {
                                 : ""
                             font.pixelSize: 13
                             font.weight: Font.DemiBold
-                            color: "#ffffff"
+                            color: root.fgColor
                             elide: Text.ElideRight
                             maximumLineCount: 1
                         }
@@ -759,7 +785,7 @@ Item {
                         color: isToday ? root.accentColor : root.innerCardBg
                         border.width: 1
                         border.color: isToday
-                            ? ColorUtils.applyAlpha(root.accentColor, 0.9)
+                            ? ColorUtils.applyAlpha(root.accentColor, 0.85)
                             : root.innerCardBorder
 
                         ColumnLayout {
@@ -771,7 +797,9 @@ Item {
                                 text: Qt.locale().toString(date, "ddd").slice(0, 2)
                                 font.pixelSize: 10
                                 font.weight: isToday ? Font.DemiBold : Font.Medium
-                                color: isToday ? Qt.rgba(1, 1, 1, 0.88) : root.fgMuted
+                                color: isToday
+                                    ? ColorUtils.applyAlpha(root.onAccentColor, 0.85)
+                                    : root.fgMuted
                             }
 
                             StyledText {
@@ -780,7 +808,7 @@ Item {
                                 font.pixelSize: isToday ? 14 : 13
                                 font.weight: isToday ? Font.Bold : Font.Medium
                                 font.features: ({ "tnum": 1 })
-                                color: "#ffffff"
+                                color: isToday ? root.onAccentColor : root.fgColor
                             }
                         }
                     }
@@ -808,13 +836,13 @@ Item {
                         Layout.preferredWidth: 32
                         Layout.preferredHeight: 32
                         radius: 10
-                        color: ColorUtils.applyAlpha(root.accentColor, 0.24)
+                        color: ColorUtils.applyAlpha(root.accentColor, root.dark ? 0.24 : 0.14)
 
                         MaterialSymbol {
                             anchors.centerIn: parent
                             text: "checklist"
                             iconSize: 17
-                            color: "#ffffff"
+                            color: root.accentColor
                         }
                     }
 
@@ -877,10 +905,7 @@ Item {
 
     // ============================================================
     // 3. RIGHT FLOATING PILL / EXPANDABLE BATTERY ISLAND
-    //    - Default: Compact floating pill with Tray + Battery + Controls
-    //    - Hovering Battery: Right Island itself smoothly expands downward
-    //      to reveal Battery details (percentage, time, bar, health, power)
-    //      — NO external BatteryPopup!
+    //    (Follows Device Material You Light/Dark Frosted Glass Theme)
     // ============================================================
     Rectangle {
         id: rightIsland
@@ -913,11 +938,18 @@ Item {
         height: batteryExpanded ? expandedH : root.pillHeight
         radius: batteryExpanded ? 22 : root.pillHeight / 2
         clip: true
-        color: batteryExpanded ? root.islandBgHover : root.islandBg
+        color: root.islandBg
         border.width: root.showBorder ? 1 : 0
         border.color: batteryExpanded
-            ? ColorUtils.applyAlpha(root.macGreen, 0.35)
-            : Qt.rgba(1, 1, 1, 0.14)
+            ? ColorUtils.applyAlpha(root.accentColor, root.dark ? 0.45 : 0.35)
+            : root.islandBorder
+
+        WindowGlass {
+            anchors.fill: parent
+            glassEnabled: root.glassOn
+            cardRadius: parent.radius
+            tint: parent.color
+        }
 
         Behavior on width {
             NumberAnimation {
@@ -943,21 +975,20 @@ Item {
                 easing.type: Easing.OutCubic
             }
         }
-        Behavior on color { ColorAnimation { duration: 180 } }
         Behavior on border.color { ColorAnimation { duration: 180 } }
 
-        // Inner top glass rim
+        // Specular glass inner rim
         Rectangle {
             anchors.fill: parent
             anchors.margins: 1
             radius: Math.max(0, parent.radius - 1)
             color: "transparent"
             border.width: 1
-            border.color: Qt.rgba(1, 1, 1, 0.06)
+            border.color: root.innerRimColor
             z: 30
         }
 
-        // Top Header Row (always pinned to top-right inside the pill)
+        // Top Header Row (pinned to top-right inside the pill)
         RowLayout {
             id: rightSection
             anchors {
@@ -1319,11 +1350,11 @@ Item {
                 width: parent.width
                 spacing: 10
 
-                // Subtle divider between top pill row & expanded battery panel
+                // Hairline divider
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 1
-                    color: Qt.rgba(1, 1, 1, 0.12)
+                    color: root.dividerColor
                 }
 
                 // Battery Header: Icon + Status + Giant %
@@ -1336,10 +1367,10 @@ Item {
                         Layout.preferredHeight: 36
                         radius: 12
                         color: (batteryItem.charging || batteryItem.pluggedIn)
-                            ? ColorUtils.applyAlpha(root.macGreen, 0.22)
+                            ? ColorUtils.applyAlpha(root.macGreen, root.dark ? 0.22 : 0.14)
                             : (batteryItem.low
-                                ? ColorUtils.applyAlpha(root.macRed, 0.22)
-                                : ColorUtils.applyAlpha(root.accentColor, 0.22))
+                                ? ColorUtils.applyAlpha(root.macRed, root.dark ? 0.22 : 0.14)
+                                : ColorUtils.applyAlpha(root.accentColor, root.dark ? 0.22 : 0.14))
 
                         MaterialSymbol {
                             anchors.centerIn: parent
@@ -1347,7 +1378,7 @@ Item {
                             iconSize: 20
                             color: (batteryItem.charging || batteryItem.pluggedIn)
                                 ? root.macGreen
-                                : (batteryItem.low ? root.macRed : "#ffffff")
+                                : (batteryItem.low ? root.macRed : root.accentColor)
                         }
                     }
 
@@ -1359,7 +1390,7 @@ Item {
                             text: Translation.tr("Battery")
                             font.pixelSize: 14
                             font.weight: Font.Bold
-                            color: "#ffffff"
+                            color: root.fgColor
                         }
 
                         StyledText {
@@ -1382,7 +1413,7 @@ Item {
                         font.features: ({ "tnum": 1 })
                         color: (batteryItem.charging || batteryItem.pluggedIn)
                             ? root.macGreen
-                            : (batteryItem.low ? root.macRed : "#ffffff")
+                            : (batteryItem.low ? root.macRed : root.accentColor)
                     }
                 }
 
@@ -1391,7 +1422,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 7
                     radius: 3.5
-                    color: Qt.rgba(1, 1, 1, 0.12)
+                    color: Appearance.colors.colLayer2
 
                     Rectangle {
                         anchors {
@@ -1450,7 +1481,7 @@ Item {
                                 font.pixelSize: 15
                                 font.weight: Font.Bold
                                 font.features: ({ "tnum": 1 })
-                                color: "#ffffff"
+                                color: root.fgColor
                             }
 
                             StyledText {
@@ -1499,7 +1530,7 @@ Item {
                                 font.pixelSize: 15
                                 font.weight: Font.Bold
                                 font.features: ({ "tnum": 1 })
-                                color: "#ffffff"
+                                color: root.fgColor
                             }
 
                             StyledText {
@@ -1517,7 +1548,7 @@ Item {
     }
 
     // ============================================================
-    // MEDIA BUTTON FOR EXPANDED DYNAMIC ISLAND
+    // MEDIA BUTTON FOR EXPANDED DYNAMIC ISLAND (Theme-Aware)
     // ============================================================
     component IslandMediaBtn: Item {
         id: mBtn
@@ -1534,8 +1565,8 @@ Item {
             anchors.fill: parent
             radius: width / 2
             color: mBtn.primary
-                ? (mBtnMouse.pressed ? Qt.rgba(1, 1, 1, 0.78) : (mBtnMouse.containsMouse ? "#ffffff" : Qt.rgba(1, 1, 1, 0.92)))
-                : (mBtnMouse.pressed ? Qt.rgba(1, 1, 1, 0.24) : (mBtnMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.14) : "transparent"))
+                ? (mBtnMouse.pressed ? Appearance.colors.colPrimaryActive : (mBtnMouse.containsMouse ? Appearance.colors.colPrimaryHover : root.accentColor))
+                : (mBtnMouse.pressed ? Appearance.colors.colLayer2 : (mBtnMouse.containsMouse ? root.hoverBg : "transparent"))
 
             Behavior on color { ColorAnimation { duration: 110 } }
 
@@ -1544,7 +1575,7 @@ Item {
                 text: mBtn.icon
                 iconSize: mBtn.iconSz
                 fill: mBtn.filled ? 1 : 0
-                color: mBtn.primary ? "#11141c" : "#ffffff"
+                color: mBtn.primary ? root.onAccentColor : root.fgColor
             }
         }
 
@@ -1558,7 +1589,7 @@ Item {
     }
 
     // ============================================================
-    // REUSABLE PILL ITEM WRAPPER
+    // REUSABLE PILL ITEM WRAPPER (Theme-Aware)
     // ============================================================
     component MenuBarItem: Item {
         id: itemRoot
