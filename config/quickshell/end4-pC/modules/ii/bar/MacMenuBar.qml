@@ -19,6 +19,21 @@ Item {
 
     readonly property bool dark: Appearance.m3colors.darkmode
     readonly property bool glassOn: Config.options?.background?.widgets?.glass?.enable ?? false
+    readonly property var macCfg: Config.options?.bar?.macos ?? null
+    readonly property real barOpacity: macCfg?.opacity ?? 0.68
+    readonly property bool showBorder: macCfg?.showBorder ?? true
+    readonly property bool showLogo: macCfg?.showLogo ?? true
+    readonly property bool showActiveApp: macCfg?.showActiveApp ?? true
+    readonly property bool showWorkspaces: macCfg?.showWorkspaces ?? true
+    readonly property int minWorkspaces: macCfg?.workspaceCount ?? 4
+    readonly property bool showTray: macCfg?.showTray ?? true
+    readonly property bool showBattery: macCfg?.showBattery ?? true
+    readonly property bool showWifi: macCfg?.showWifi ?? true
+    readonly property bool showBluetooth: macCfg?.showBluetooth ?? true
+    readonly property bool showVolume: macCfg?.showVolume ?? true
+    readonly property bool showSpotlight: macCfg?.showSpotlight ?? true
+    readonly property bool showControlCenter: macCfg?.showControlCenter ?? true
+    readonly property bool showClock: macCfg?.showClock ?? true
 
     // Unified Material You palette matching Dock, App Drawer, Control Center & Widgets
     readonly property color fgColor: Appearance.colors.colOnLayer0
@@ -81,7 +96,7 @@ Item {
         anchors.fill: parent
         color: ColorUtils.applyAlpha(
             Appearance.colors.colLayer0Base,
-            root.glassOn ? 0.50 : 0.68
+            root.glassOn ? Math.max(0.15, root.barOpacity * 0.78) : root.barOpacity
         )
 
         WindowGlass {
@@ -93,6 +108,7 @@ Item {
 
         // Crisp 1px bottom hairline matching system panel borders
         Rectangle {
+            visible: root.showBorder
             anchors {
                 left: parent.left
                 right: parent.right
@@ -120,6 +136,7 @@ Item {
         // System / Distro Logo Menu Button
         MenuBarItem {
             id: logoItem
+            visible: root.showLogo
             horizontalPad: 8
             active: GlobalStates.settingsOpen
             tooltip: Translation.tr("Settings • Right-click for Session")
@@ -138,6 +155,7 @@ Item {
 
         // Bold Active App Name (classic macOS Finder / App menu title)
         MenuBarItem {
+            visible: root.showActiveApp
             horizontalPad: 8
             tooltip: Translation.tr("Overview")
             onClicked: GlobalStates.overviewOpen = !GlobalStates.overviewOpen
@@ -154,6 +172,7 @@ Item {
 
         // Subtle separator dot
         Rectangle {
+            visible: root.showWorkspaces && (root.showLogo || root.showActiveApp)
             Layout.alignment: Qt.AlignVCenter
             Layout.leftMargin: 2
             Layout.rightMargin: 4
@@ -167,6 +186,7 @@ Item {
         // Compact macOS-style Workspaces Switcher
         Item {
             id: wsContainer
+            visible: root.showWorkspaces
             Layout.alignment: Qt.AlignVCenter
             implicitWidth: wsRow.implicitWidth
             implicitHeight: root.height
@@ -193,7 +213,7 @@ Item {
                         readonly property int wsId: wsModel.getWorkspaceIdAt(index)
                         readonly property bool isActive: wsModel.activeNumber === wsId
                         readonly property bool isOccupied: wsModel.occupied[index] ?? false
-                        readonly property bool shown: isActive || isOccupied || index < 4
+                        readonly property bool shown: isActive || isOccupied || index < root.minWorkspaces
 
                         visible: shown
                         width: shown ? 20 : 0
@@ -268,7 +288,7 @@ Item {
 
         // 1. System Tray (only takes space when tray apps exist)
         SysTray {
-            visible: SystemTray.items.values.length > 0
+            visible: root.showTray && SystemTray.items.values.length > 0
             Layout.alignment: Qt.AlignVCenter
             Layout.rightMargin: 2
             contentColor: root.fgColor
@@ -324,7 +344,7 @@ Item {
         // 5. Battery with Charging Indicator + Hover Popup
         MenuBarItem {
             id: batteryItem
-            visible: Battery.available
+            visible: root.showBattery && Battery.available
             horizontalPad: 7
             onClicked: GlobalStates.sidebarRightOpen = !GlobalStates.sidebarRightOpen
 
@@ -419,6 +439,7 @@ Item {
 
         // 6. Wi-Fi / Network Icon
         MenuBarItem {
+            visible: root.showWifi
             horizontalPad: 6
             tooltip: Network.wifiEnabled
                 ? (Network.networkName || Translation.tr("Wi-Fi On"))
@@ -435,7 +456,7 @@ Item {
 
         // 7. Bluetooth Icon
         MenuBarItem {
-            visible: BluetoothStatus.available
+            visible: root.showBluetooth && BluetoothStatus.available
             horizontalPad: 6
             tooltip: BluetoothStatus.enabled
                 ? (BluetoothStatus.firstActiveDevice?.name ?? Translation.tr("Bluetooth On"))
@@ -454,6 +475,7 @@ Item {
 
         // 8. Volume Icon (scroll to adjust volume, right-click to mute, left-click for Control Center)
         MenuBarItem {
+            visible: root.showVolume
             horizontalPad: 6
             tooltip: (Audio.sink?.audio?.muted ?? false)
                 ? Translation.tr("Muted • Scroll to adjust")
@@ -477,6 +499,7 @@ Item {
 
         // 9. Spotlight Search Icon
         MenuBarItem {
+            visible: root.showSpotlight
             horizontalPad: 6
             active: GlobalStates.overviewOpen
             tooltip: Translation.tr("Spotlight Search")
@@ -491,6 +514,7 @@ Item {
 
         // 10. Iconic macOS Control Center Dual-Toggle Icon
         MenuBarItem {
+            visible: root.showControlCenter
             horizontalPad: 7
             active: GlobalStates.sidebarRightOpen
             tooltip: Translation.tr("Control Center")
@@ -572,6 +596,7 @@ Item {
         // 12. Date & Time (Far Right — exact macOS menu bar format + Clock/Calendar popup)
         MenuBarItem {
             id: clockItem
+            visible: root.showClock
             horizontalPad: 8
             onClicked: GlobalStates.sidebarRightOpen = !GlobalStates.sidebarRightOpen
 

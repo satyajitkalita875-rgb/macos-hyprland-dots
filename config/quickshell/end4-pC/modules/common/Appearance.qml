@@ -442,7 +442,7 @@ Singleton {
 
     sizes: QtObject {
         property real baseBarHeight: 40
-        property real macosBarHeight: 28
+        property real macosBarHeight: Config.options?.bar?.macos?.height ?? 28
         property real barHeight: Config.options.bar.cornerStyle === 7 ? macosBarHeight :
             Config.options.bar.cornerStyle === 1 ? 
             (baseBarHeight + root.sizes.hyprlandGapsOut * 2) : (Config.options.bar.cornerStyle === 4 || Config.options.bar.cornerStyle === 5 || Config.options.bar.cornerStyle === 6) ? baseBarHeight + 4 : baseBarHeight

@@ -194,6 +194,152 @@ ContentPage {
         }
 
         ContentSection {
+            icon: "laptop_mac"
+            shape: MaterialShape.Shape.Cookie7Sided
+            title: Translation.tr("Top Bar Customization")
+            visible: page.isMacosBar
+
+            GroupedList {
+                ConfigSpinBox {
+                    icon: "height"
+                    text: Translation.tr("Bar height (px)")
+                    value: Config.options.bar.macos.height
+                    from: 24
+                    to: 40
+                    stepSize: 1
+                    onValueChanged: { Config.options.bar.macos.height = value }
+                }
+                ConfigSlider {
+                    buttonIcon: "opacity"
+                    text: Translation.tr("Background opacity")
+                    from: 0.0
+                    to: 1.0
+                    stopIndicatorValues: [0.68]
+                    value: Config.options.bar.macos.opacity
+                    onValueChanged: { Config.options.bar.macos.opacity = value }
+                }
+                ConfigSwitch {
+                    buttonIcon: "border_bottom"
+                    text: Translation.tr("Show bottom border")
+                    checked: Config.options.bar.macos.showBorder
+                    onCheckedChanged: { Config.options.bar.macos.showBorder = checked }
+                }
+            }
+
+            ContentSubsection {
+                Layout.topMargin: 8
+                title: Translation.tr("Left menu items")
+                GroupedList {
+                    ConfigRow {
+                        uniform: true
+                        ConfigSwitch {
+                            buttonIcon: "spark"
+                            text: Translation.tr("System logo")
+                            checked: Config.options.bar.macos.showLogo
+                            onCheckedChanged: { Config.options.bar.macos.showLogo = checked }
+                        }
+                        ConfigSwitch {
+                            buttonIcon: "subtitles"
+                            text: Translation.tr("Active app name")
+                            checked: Config.options.bar.macos.showActiveApp
+                            onCheckedChanged: { Config.options.bar.macos.showActiveApp = checked }
+                        }
+                    }
+                    ConfigSwitch {
+                        buttonIcon: "steppers"
+                        text: Translation.tr("Workspaces")
+                        checked: Config.options.bar.macos.showWorkspaces
+                        onCheckedChanged: { Config.options.bar.macos.showWorkspaces = checked }
+                    }
+                    ConfigSpinBox {
+                        enabled: Config.options.bar.macos.showWorkspaces
+                        icon: "view_column"
+                        text: Translation.tr("Minimum workspaces shown")
+                        value: Config.options.bar.macos.workspaceCount
+                        from: 1
+                        to: 10
+                        stepSize: 1
+                        onValueChanged: { Config.options.bar.macos.workspaceCount = value }
+                    }
+                }
+            }
+
+            ContentSubsection {
+                Layout.topMargin: 8
+                title: Translation.tr("Right system icons")
+                GroupedList {
+                    ConfigRow {
+                        uniform: true
+                        ConfigSwitch {
+                            buttonIcon: "inbox"
+                            text: Translation.tr("System tray")
+                            checked: Config.options.bar.macos.showTray
+                            onCheckedChanged: { Config.options.bar.macos.showTray = checked }
+                        }
+                        ConfigSwitch {
+                            buttonIcon: "battery_std"
+                            text: Translation.tr("Battery")
+                            checked: Config.options.bar.macos.showBattery
+                            onCheckedChanged: { Config.options.bar.macos.showBattery = checked }
+                        }
+                    }
+                    ConfigRow {
+                        uniform: true
+                        ConfigSwitch {
+                            buttonIcon: "wifi"
+                            text: Translation.tr("Wi-Fi")
+                            checked: Config.options.bar.macos.showWifi
+                            onCheckedChanged: { Config.options.bar.macos.showWifi = checked }
+                        }
+                        ConfigSwitch {
+                            buttonIcon: "bluetooth"
+                            text: Translation.tr("Bluetooth")
+                            checked: Config.options.bar.macos.showBluetooth
+                            onCheckedChanged: { Config.options.bar.macos.showBluetooth = checked }
+                        }
+                    }
+                    ConfigRow {
+                        uniform: true
+                        ConfigSwitch {
+                            buttonIcon: "volume_up"
+                            text: Translation.tr("Volume")
+                            checked: Config.options.bar.macos.showVolume
+                            onCheckedChanged: { Config.options.bar.macos.showVolume = checked }
+                        }
+                        ConfigSwitch {
+                            buttonIcon: "search"
+                            text: Translation.tr("Spotlight search")
+                            checked: Config.options.bar.macos.showSpotlight
+                            onCheckedChanged: { Config.options.bar.macos.showSpotlight = checked }
+                        }
+                    }
+                    ConfigRow {
+                        uniform: true
+                        ConfigSwitch {
+                            buttonIcon: "tune"
+                            text: Translation.tr("Control Center")
+                            checked: Config.options.bar.macos.showControlCenter
+                            onCheckedChanged: { Config.options.bar.macos.showControlCenter = checked }
+                        }
+                        ConfigSwitch {
+                            buttonIcon: "schedule"
+                            text: Translation.tr("Clock")
+                            checked: Config.options.bar.macos.showClock
+                            onCheckedChanged: { Config.options.bar.macos.showClock = checked }
+                        }
+                    }
+                    ConfigSwitch {
+                        enabled: Config.options.bar.macos.showClock
+                        buttonIcon: "calendar_today"
+                        text: Translation.tr("Show date in clock")
+                        checked: Config.options.time.showDate
+                        onCheckedChanged: { Config.options.time.showDate = checked }
+                    }
+                }
+            }
+        }
+
+        ContentSection {
             icon: "splitscreen_add"
             shape: MaterialShape.Shape.Cookie6Sided
             title: Translation.tr("Bar layout")
@@ -516,10 +662,10 @@ ContentPage {
         }
 
         ContentSection {
-            icon: "right_panel_open"
+            icon: page.isMacosBar ? "spark" : "right_panel_open"
             shape: MaterialShape.Shape.Pentagon
-            title: Translation.tr("Left sidebar button")
-            visible: page.isUsed("leftSidebarButton")
+            title: page.isMacosBar ? Translation.tr("Top Bar Logo") : Translation.tr("Left sidebar button")
+            visible: (page.isMacosBar && Config.options.bar.macos.showLogo) || page.isUsed("leftSidebarButton")
 
             GroupedList {
                 ConfigRow {

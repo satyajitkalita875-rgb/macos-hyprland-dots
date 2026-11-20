@@ -210,7 +210,7 @@
                 "z": 0
             },
             "glass": {
-                "enable": true,
+                "enable": false,
                 "haze": 3,
                 "pull": 26,
                 "rimWidth": 16,

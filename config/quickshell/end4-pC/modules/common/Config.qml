@@ -589,6 +589,23 @@ Singleton {
                     property bool showPercentage: true
                     property bool showCharging: true
                 }
+                property JsonObject macos: JsonObject {
+                    property int height: 28
+                    property real opacity: 0.68
+                    property bool showBorder: true
+                    property bool showLogo: true
+                    property bool showActiveApp: true
+                    property bool showWorkspaces: true
+                    property int workspaceCount: 4
+                    property bool showTray: true
+                    property bool showBattery: true
+                    property bool showWifi: true
+                    property bool showBluetooth: true
+                    property bool showVolume: true
+                    property bool showSpotlight: true
+                    property bool showControlCenter: true
+                    property bool showClock: true
+                }
                 property JsonObject utilButtons: JsonObject {
                     property bool showScreenSnip: true
                     property bool showColorPicker: true
