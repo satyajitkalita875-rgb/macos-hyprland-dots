@@ -430,17 +430,17 @@ LazyLoader {
                 target: bodyScale
                 property: root.barVertical ? "xScale" : "yScale"
                 to: root.morph ? 0.01 : 0.4
-                duration: 220
+                duration: 280
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
+                easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
             }
             NumberAnimation {
                 target: bodyScale
                 property: root.barVertical ? "yScale" : "xScale"
-                to: root.morph ? 1 : 0.85
-                duration: 220
+                to: root.morph ? 1 : 0.8
+                duration: 260
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
+                easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
             }
             NumberAnimation {
                 target: body
@@ -448,13 +448,23 @@ LazyLoader {
                 to: 0
                 duration: 200
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
+                easing.bezierCurve: Appearance.animationCurves.expressiveEffects
             }
             NumberAnimation {
                 target: contentHolder
                 property: "opacity"
                 to: 0
-                duration: 120
+                duration: 160
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Appearance.animationCurves.expressiveEffects
+            }
+            NumberAnimation {
+                target: contentShift
+                property: root.barVertical ? "x" : "y"
+                to: (root.barEdge === "left" || root.barEdge === "top") ? -16 : 16
+                duration: 220
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
             }
         }
     }

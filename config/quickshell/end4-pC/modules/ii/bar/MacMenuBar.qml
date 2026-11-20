@@ -425,29 +425,29 @@ Item {
 
         Behavior on width {
             NumberAnimation {
-                duration: centerIsland.expanded ? 220 : 160
+                duration: 230
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: centerIsland.expanded
                     ? Appearance.animationCurves.expressiveFastSpatial
-                    : Appearance.animationCurves.emphasizedAccel
+                    : Appearance.animationCurves.expressiveDefaultSpatial
             }
         }
         Behavior on height {
             NumberAnimation {
-                duration: centerIsland.expanded ? 240 : 160
+                duration: 250
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: centerIsland.expanded
                     ? Appearance.animationCurves.expressiveFastSpatial
-                    : Appearance.animationCurves.emphasizedAccel
+                    : Appearance.animationCurves.expressiveDefaultSpatial
             }
         }
         Behavior on radius {
             NumberAnimation {
-                duration: centerIsland.expanded ? 200 : 150
+                duration: 220
                 easing.type: Easing.OutCubic
             }
         }
-        Behavior on border.color { ColorAnimation { duration: 140 } }
+        Behavior on border.color { ColorAnimation { duration: 160 } }
 
         // Inner macOS glass rim matching Control Center & Dock
         Rectangle {
@@ -629,7 +629,7 @@ Item {
             }
 
             Behavior on opacity {
-                NumberAnimation { duration: centerIsland.expanded ? 140 : 75; easing.type: Easing.OutCubic }
+                NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
             }
 
             // Expanded Top Row: Month Year + Live Time & Day Pill
@@ -1006,29 +1006,29 @@ Item {
 
         Behavior on width {
             NumberAnimation {
-                duration: rightIsland.batteryExpanded ? 220 : 160
+                duration: 230
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: rightIsland.batteryExpanded
                     ? Appearance.animationCurves.expressiveFastSpatial
-                    : Appearance.animationCurves.emphasizedAccel
+                    : Appearance.animationCurves.expressiveDefaultSpatial
             }
         }
         Behavior on height {
             NumberAnimation {
-                duration: rightIsland.batteryExpanded ? 240 : 160
+                duration: 250
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: rightIsland.batteryExpanded
                     ? Appearance.animationCurves.expressiveFastSpatial
-                    : Appearance.animationCurves.emphasizedAccel
+                    : Appearance.animationCurves.expressiveDefaultSpatial
             }
         }
         Behavior on radius {
             NumberAnimation {
-                duration: rightIsland.batteryExpanded ? 200 : 150
+                duration: 220
                 easing.type: Easing.OutCubic
             }
         }
-        Behavior on border.color { ColorAnimation { duration: 140 } }
+        Behavior on border.color { ColorAnimation { duration: 160 } }
 
         // Specular glass inner rim
         Rectangle {
@@ -1378,7 +1378,7 @@ Item {
             }
 
             Behavior on opacity {
-                NumberAnimation { duration: rightIsland.batteryExpanded ? 140 : 75; easing.type: Easing.OutCubic }
+                NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
             }
 
             HoverHandler {

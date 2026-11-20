@@ -411,7 +411,7 @@ Scope {
                 }
             }
 
-            // Expressive bouncy pop-in animation matching bar popups
+            // Symmetric expressive pop-in / pop-out animations
             ParallelAnimation {
                 id: openAnim
                 running: true
@@ -419,14 +419,14 @@ Scope {
                     target: backdrop
                     property: "opacity"
                     to: 1
-                    duration: 240
+                    duration: 220
                     easing.type: Easing.OutCubic
                 }
                 NumberAnimation {
                     target: modalWrapper
                     property: "opacity"
                     to: 1
-                    duration: Appearance.animationCurves.expressiveEffectsDuration
+                    duration: 220
                     easing.type: Easing.BezierSpline
                     easing.bezierCurve: Appearance.animationCurves.expressiveEffects
                 }
@@ -434,7 +434,7 @@ Scope {
                     target: modalScale
                     property: "yScale"
                     to: 1
-                    duration: 460
+                    duration: 280
                     easing.type: Easing.BezierSpline
                     easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
                 }
@@ -442,7 +442,7 @@ Scope {
                     target: modalScale
                     property: "xScale"
                     to: 1
-                    duration: Appearance.animationCurves.expressiveDefaultSpatialDuration
+                    duration: 260
                     easing.type: Easing.BezierSpline
                     easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
                 }
@@ -450,9 +450,9 @@ Scope {
                     target: modalTranslate
                     property: "y"
                     to: 0
-                    duration: Appearance.animationCurves.expressiveDefaultSpatialDuration
+                    duration: 260
                     easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
+                    easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
                 }
             }
 
@@ -463,40 +463,40 @@ Scope {
                     target: backdrop
                     property: "opacity"
                     to: 0
-                    duration: 180
-                    easing.type: Easing.InCubic
+                    duration: 220
+                    easing.type: Easing.OutCubic
                 }
                 NumberAnimation {
                     target: modalWrapper
                     property: "opacity"
                     to: 0
-                    duration: 170
+                    duration: 220
                     easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
+                    easing.bezierCurve: Appearance.animationCurves.expressiveEffects
                 }
                 NumberAnimation {
                     target: modalScale
                     property: "yScale"
-                    to: 0.84
-                    duration: 190
+                    to: 0.78
+                    duration: 280
                     easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
+                    easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
                 }
                 NumberAnimation {
                     target: modalScale
                     property: "xScale"
-                    to: 0.90
-                    duration: 190
+                    to: 0.86
+                    duration: 260
                     easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
+                    easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
                 }
                 NumberAnimation {
                     target: modalTranslate
                     property: "y"
-                    to: -10
-                    duration: 180
+                    to: -14
+                    duration: 260
                     easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
+                    easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
                 }
             }
         }

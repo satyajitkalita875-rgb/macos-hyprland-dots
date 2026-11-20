@@ -192,7 +192,7 @@ Scope {
                     property: "yScale"
                     from: 0.4
                     to: 1
-                    duration: 500
+                    duration: 280
                     easing.type: Easing.BezierSpline
                     easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
                 }
@@ -201,7 +201,7 @@ Scope {
                     property: "xScale"
                     from: 0.8
                     to: 1
-                    duration: Appearance.animationCurves.expressiveDefaultSpatialDuration
+                    duration: 260
                     easing.type: Easing.BezierSpline
                     easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
                 }
@@ -210,18 +210,18 @@ Scope {
                     property: "opacity"
                     from: 0
                     to: 1
-                    duration: Appearance.animationCurves.expressiveEffectsDuration
+                    duration: 200
                     easing.type: Easing.BezierSpline
                     easing.bezierCurve: Appearance.animationCurves.expressiveEffects
                 }
                 NumberAnimation {
                     target: macShift
                     property: "y"
-                    from: Config.options.bar.bottom ? 16 : -16
+                    from: Config.options.bar.bottom ? 14 : -14
                     to: 0
-                    duration: Appearance.animationCurves.expressiveDefaultSpatialDuration
+                    duration: 260
                     easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
+                    easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
                 }
             }
 
@@ -237,17 +237,17 @@ Scope {
                     target: macScale
                     property: "yScale"
                     to: 0.4
-                    duration: 220
+                    duration: 280
                     easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
+                    easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
                 }
                 NumberAnimation {
                     target: macScale
                     property: "xScale"
-                    to: 0.85
-                    duration: 220
+                    to: 0.8
+                    duration: 260
                     easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
+                    easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
                 }
                 NumberAnimation {
                     target: macAnimContainer
@@ -255,15 +255,15 @@ Scope {
                     to: 0
                     duration: 200
                     easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
+                    easing.bezierCurve: Appearance.animationCurves.expressiveEffects
                 }
                 NumberAnimation {
                     target: macShift
                     property: "y"
-                    to: Config.options.bar.bottom ? 10 : -10
-                    duration: 200
+                    to: Config.options.bar.bottom ? 14 : -14
+                    duration: 260
                     easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
+                    easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
                 }
             }
         }

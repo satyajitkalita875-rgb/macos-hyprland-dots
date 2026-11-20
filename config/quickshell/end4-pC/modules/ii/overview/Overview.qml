@@ -29,7 +29,20 @@ Scope {
             && !Config.options.bar.autoHide.enable
         property bool monitorIsFocused: (Hyprland.focusedMonitor?.id == monitor?.id)
         readonly property bool anyOpen: GlobalStates.overviewOpen || GlobalStates.searchOpen
-        visible: anyOpen
+        property bool closing: false
+        property bool showSearchContent: GlobalStates.searchOpen
+        property bool showOverviewContent: GlobalStates.overviewOpen
+        visible: anyOpen || closing
+
+        Timer {
+            id: overviewCloseTimer
+            interval: 260
+            onTriggered: {
+                panelWindow.closing = false;
+                if (!GlobalStates.searchOpen) panelWindow.showSearchContent = false;
+                if (!GlobalStates.overviewOpen) panelWindow.showOverviewContent = false;
+            }
+        }
 
         WlrLayershell.namespace: "quickshell:overview"
         WlrLayershell.layer: WlrLayer.Top
@@ -57,14 +70,24 @@ Scope {
             target: GlobalStates
             function onOverviewOpenChanged() {
                 if (GlobalStates.overviewOpen) {
+                    overviewCloseTimer.stop();
+                    panelWindow.closing = false;
+                    panelWindow.showOverviewContent = true;
+                    panelWindow.showSearchContent = false;
                     if (GlobalStates.searchOpen) GlobalStates.searchOpen = false;
                     GlobalFocusGrab.addDismissable(panelWindow);
                 } else if (!GlobalStates.searchOpen) {
+                    panelWindow.closing = true;
+                    overviewCloseTimer.restart();
                     GlobalFocusGrab.dismiss();
                 }
             }
             function onSearchOpenChanged() {
                 if (GlobalStates.searchOpen) {
+                    overviewCloseTimer.stop();
+                    panelWindow.closing = false;
+                    panelWindow.showSearchContent = true;
+                    panelWindow.showOverviewContent = false;
                     if (GlobalStates.overviewOpen) GlobalStates.overviewOpen = false;
                     if (!overviewScope.dontAutoCancelSearch) {
                         searchWidget.cancelSearch();
@@ -75,6 +98,8 @@ Scope {
                     searchWidget.disableExpandAnimation();
                     overviewScope.dontAutoCancelSearch = false;
                     if (!GlobalStates.overviewOpen) {
+                        panelWindow.closing = true;
+                        overviewCloseTimer.restart();
                         GlobalFocusGrab.dismiss();
                     }
                 }
@@ -113,7 +138,7 @@ Scope {
 
         Column {
             id: columnLayout
-            visible: panelWindow.anyOpen
+            visible: panelWindow.anyOpen || panelWindow.closing
             opacity: panelWindow.anyOpen ? 1 : 0
             scale: panelWindow.anyOpen ? 1 : 0.85
             transformOrigin: Item.Top
@@ -126,11 +151,30 @@ Scope {
             }
             spacing: -8
 
+            transform: Translate {
+                y: panelWindow.anyOpen ? 0 : -12
+                Behavior on y {
+                    NumberAnimation {
+                        duration: 260
+                        easing.type: Easing.BezierSpline
+                        easing.bezierCurve: panelWindow.anyOpen
+                            ? Appearance.animationCurves.expressiveFastSpatial
+                            : Appearance.animationCurves.expressiveDefaultSpatial
+                    }
+                }
+            }
+
             Behavior on opacity {
                 NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
             }
             Behavior on scale {
-                NumberAnimation { duration: 300; easing.type: Easing.BezierSpline; easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial }
+                NumberAnimation {
+                    duration: 260
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: panelWindow.anyOpen
+                        ? Appearance.animationCurves.expressiveFastSpatial
+                        : Appearance.animationCurves.expressiveDefaultSpatial
+                }
             }
 
             Keys.onPressed: event => {
@@ -148,7 +192,7 @@ Scope {
 
             SearchWidget {
                 id: searchWidget
-                visible: GlobalStates.searchOpen
+                visible: panelWindow.showSearchContent
                 anchors.horizontalCenter: parent.horizontalCenter
                 Synchronizer on searchingText {
                     property alias source: panelWindow.searchingText
@@ -157,15 +201,15 @@ Scope {
 
             Loader {
                 id: overviewLoader
-                active: GlobalStates.overviewOpen && (Config?.options.overview.enable ?? true)
-                visible: GlobalStates.overviewOpen
+                active: panelWindow.showOverviewContent && (Config?.options.overview.enable ?? true)
+                visible: panelWindow.showOverviewContent
                 sourceComponent: (Config?.options.overview.style ?? "default") === "niri" ? niriComponent : defaultComponent
 
                 Component {
                     id: defaultComponent
                     OverviewWidget {
                         screen: panelWindow.screen
-                        visible: GlobalStates.overviewOpen
+                        visible: panelWindow.showOverviewContent
                     }
                 }
 
@@ -174,7 +218,7 @@ Scope {
                     NiriOverview {
                         screen: panelWindow.screen
                         panelWindow: panelWindow
-                        visible: GlobalStates.overviewOpen
+                        visible: panelWindow.showOverviewContent
                     }
                 }
             }
