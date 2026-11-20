@@ -1,0 +1,8 @@
+.DS_Store
+*.log
+*.qslog
+*.tmp
+__pycache__/
+*.pyc
+.cache/
+wallpapers/macOS-Tahoe-Light.png
