@@ -75,8 +75,8 @@ Item { // Wrapper
 
     Connections {
         target: GlobalStates
-        function onOverviewOpenChanged() {
-            if (!GlobalStates.overviewOpen) root.resetPreview()
+        function onSearchOpenChanged() {
+            if (!GlobalStates.searchOpen) root.resetPreview()
         }
     }
 
@@ -204,7 +204,7 @@ Item { // Wrapper
 
         Behavior on implicitHeight {
             id: searchHeightBehavior
-            enabled: GlobalStates.overviewOpen && root.showResults
+            enabled: GlobalStates.searchOpen && root.showResults
             animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
         }
 

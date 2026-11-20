@@ -132,14 +132,14 @@ hl.layer_rule({
   blur_popups = true,
 })
 
--- Top Menu Bar frosted translucent glass blur
+-- Top floating Dynamic Island pills frosted translucent glass blur
 hl.layer_rule({
   name = "quickshell-bar",
   match = {
     namespace = "^quickshell:bar$",
   },
   no_anim = true,
-  ignore_alpha = 0.05,
+  ignore_alpha = 0.25,
   blur = true,
   blur_popups = true,
 })

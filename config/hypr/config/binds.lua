@@ -40,7 +40,7 @@ hl.bind(mainMod .. " + Right",       hl.dsp.focus({ direction = "right" }))
 hl.bind(mainMod .. " + ALT + Up",    hl.dsp.focus({ direction = "up" }))
 hl.bind(mainMod .. " + ALT + Down",  hl.dsp.focus({ direction = "down" }))
 hl.bind("ALT + Tab",           hl.dsp.window.cycle_next())
-hl.bind(mainMod .. " + Tab",   hl.dsp.exec_cmd(qsCall .. "search toggle"))
+hl.bind(mainMod .. " + Tab",   hl.dsp.exec_cmd(qsCall .. "search workspacesToggle"))
 
 -- Move active window around workspaces & monitors
 hl.bind(mainMod .. " + SHIFT + Up",                   hl.dsp.window.move({ direction = "u" }))

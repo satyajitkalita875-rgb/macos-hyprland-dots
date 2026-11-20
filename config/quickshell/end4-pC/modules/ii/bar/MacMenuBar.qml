@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Effects
 import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
 import Quickshell
@@ -123,8 +124,19 @@ Item {
     }
 
     // ============================================================
-    // 1. LEFT FLOATING PILL: Logo + Active App + Workspaces
+    // 1. LEFT FLOATING PILL: Logo + Active App + Workspaces Overview + Workspaces
     // ============================================================
+    RectangularShadow {
+        visible: leftPill.visible
+        anchors.fill: leftPill
+        radius: leftPill.radius
+        blur: 18
+        spread: 0
+        offset: Qt.vector2d(0, 5)
+        color: ColorUtils.applyAlpha(Appearance.m3colors.m3shadow, root.dark ? 0.22 : 0.14)
+        cached: false
+    }
+
     Rectangle {
         id: leftPill
         visible: root.showLogo || root.showActiveApp || root.showWorkspaces
@@ -195,7 +207,7 @@ Item {
             MenuBarItem {
                 visible: root.showActiveApp
                 horizontalPad: 7
-                tooltip: Translation.tr("Overview")
+                tooltip: Translation.tr("Active Window")
                 onClicked: GlobalStates.overviewOpen = !GlobalStates.overviewOpen
 
                 StyledText {
@@ -205,6 +217,23 @@ Item {
                     color: root.fgColor
                     elide: Text.ElideRight
                     maximumLineCount: 1
+                }
+            }
+
+            // Dedicated Workspaces Overview Button on the Left Side
+            MenuBarItem {
+                id: workspacesBtn
+                visible: root.showWorkspaces
+                horizontalPad: 6
+                active: GlobalStates.overviewOpen
+                tooltip: Translation.tr("Workspaces")
+                onClicked: GlobalStates.overviewOpen = !GlobalStates.overviewOpen
+
+                MaterialSymbol {
+                    text: "grid_view"
+                    iconSize: 15
+                    fill: GlobalStates.overviewOpen ? 1 : 0
+                    color: GlobalStates.overviewOpen ? root.activeFg : root.fgColor
                 }
             }
 
@@ -316,6 +345,18 @@ Item {
     //    - Hovered: Smoothly expands downward in-place showing Calendar,
     //      Tasks, Uptime & Expanded Media Player (when playing)
     // ============================================================
+    RectangularShadow {
+        visible: centerIsland.visible
+        anchors.fill: centerIsland
+        radius: centerIsland.radius
+        blur: centerIsland.expanded ? 24 : 18
+        spread: 0
+        offset: Qt.vector2d(0, centerIsland.expanded ? 8 : 5)
+        color: ColorUtils.applyAlpha(Appearance.m3colors.m3shadow, root.dark ? 0.22 : 0.16)
+        cached: false
+        z: 19
+    }
+
     Rectangle {
         id: centerIsland
         visible: root.showClock || root.showCompactMusic
@@ -338,7 +379,7 @@ Item {
 
         Timer {
             id: centerCollapseTimer
-            interval: 160
+            interval: 80
             onTriggered: {
                 if (!centerHover.hovered) {
                     centerIsland.expanded = false;
@@ -384,7 +425,7 @@ Item {
 
         Behavior on width {
             NumberAnimation {
-                duration: centerIsland.expanded ? 460 : 300
+                duration: centerIsland.expanded ? 220 : 160
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: centerIsland.expanded
                     ? Appearance.animationCurves.expressiveFastSpatial
@@ -393,7 +434,7 @@ Item {
         }
         Behavior on height {
             NumberAnimation {
-                duration: centerIsland.expanded ? 480 : 280
+                duration: centerIsland.expanded ? 240 : 160
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: centerIsland.expanded
                     ? Appearance.animationCurves.expressiveFastSpatial
@@ -402,11 +443,11 @@ Item {
         }
         Behavior on radius {
             NumberAnimation {
-                duration: centerIsland.expanded ? 420 : 260
+                duration: centerIsland.expanded ? 200 : 150
                 easing.type: Easing.OutCubic
             }
         }
-        Behavior on border.color { ColorAnimation { duration: 180 } }
+        Behavior on border.color { ColorAnimation { duration: 140 } }
 
         // Inner macOS glass rim matching Control Center & Dock
         Rectangle {
@@ -577,10 +618,10 @@ Item {
             visible: opacity > 0.02
 
             transform: Translate {
-                y: centerIsland.expanded ? 0 : -12
+                y: centerIsland.expanded ? 0 : -8
                 Behavior on y {
                     NumberAnimation {
-                        duration: 340
+                        duration: 180
                         easing.type: Easing.BezierSpline
                         easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
                     }
@@ -588,7 +629,7 @@ Item {
             }
 
             Behavior on opacity {
-                NumberAnimation { duration: centerIsland.expanded ? 240 : 110; easing.type: Easing.OutCubic }
+                NumberAnimation { duration: centerIsland.expanded ? 140 : 75; easing.type: Easing.OutCubic }
             }
 
             // Expanded Top Row: Month Year + Live Time & Day Pill
@@ -907,6 +948,18 @@ Item {
     // 3. RIGHT FLOATING PILL / EXPANDABLE BATTERY ISLAND
     //    (Follows Device Material You Light/Dark Frosted Glass Theme)
     // ============================================================
+    RectangularShadow {
+        visible: rightIsland.visible
+        anchors.fill: rightIsland
+        radius: rightIsland.radius
+        blur: rightIsland.batteryExpanded ? 24 : 18
+        spread: 0
+        offset: Qt.vector2d(0, rightIsland.batteryExpanded ? 8 : 5)
+        color: ColorUtils.applyAlpha(Appearance.m3colors.m3shadow, root.dark ? 0.22 : 0.16)
+        cached: false
+        z: 14
+    }
+
     Rectangle {
         id: rightIsland
         visible: root.showTray || root.showBattery || root.showWifi || root.showBluetooth || root.showVolume || root.showSpotlight || root.showControlCenter
@@ -922,7 +975,7 @@ Item {
 
         Timer {
             id: batteryCollapseTimer
-            interval: 160
+            interval: 80
             onTriggered: {
                 if (!batteryItem.mouseArea.containsMouse && !batteryDetailsHover.hovered) {
                     rightIsland.batteryExpanded = false;
@@ -953,7 +1006,7 @@ Item {
 
         Behavior on width {
             NumberAnimation {
-                duration: rightIsland.batteryExpanded ? 440 : 280
+                duration: rightIsland.batteryExpanded ? 220 : 160
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: rightIsland.batteryExpanded
                     ? Appearance.animationCurves.expressiveFastSpatial
@@ -962,7 +1015,7 @@ Item {
         }
         Behavior on height {
             NumberAnimation {
-                duration: rightIsland.batteryExpanded ? 460 : 260
+                duration: rightIsland.batteryExpanded ? 240 : 160
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: rightIsland.batteryExpanded
                     ? Appearance.animationCurves.expressiveFastSpatial
@@ -971,11 +1024,11 @@ Item {
         }
         Behavior on radius {
             NumberAnimation {
-                duration: rightIsland.batteryExpanded ? 400 : 240
+                duration: rightIsland.batteryExpanded ? 200 : 150
                 easing.type: Easing.OutCubic
             }
         }
-        Behavior on border.color { ColorAnimation { duration: 180 } }
+        Behavior on border.color { ColorAnimation { duration: 140 } }
 
         // Specular glass inner rim
         Rectangle {
@@ -1209,9 +1262,9 @@ Item {
             MenuBarItem {
                 visible: root.showSpotlight
                 horizontalPad: 5
-                active: GlobalStates.overviewOpen
+                active: GlobalStates.searchOpen
                 tooltip: Translation.tr("Spotlight Search")
-                onClicked: GlobalStates.overviewOpen = !GlobalStates.overviewOpen
+                onClicked: GlobalStates.searchOpen = !GlobalStates.searchOpen
 
                 MaterialSymbol {
                     text: "search"
@@ -1314,10 +1367,10 @@ Item {
             visible: opacity > 0.02
 
             transform: Translate {
-                y: rightIsland.batteryExpanded ? 0 : -10
+                y: rightIsland.batteryExpanded ? 0 : -8
                 Behavior on y {
                     NumberAnimation {
-                        duration: 320
+                        duration: 180
                         easing.type: Easing.BezierSpline
                         easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
                     }
@@ -1325,7 +1378,7 @@ Item {
             }
 
             Behavior on opacity {
-                NumberAnimation { duration: rightIsland.batteryExpanded ? 230 : 100; easing.type: Easing.OutCubic }
+                NumberAnimation { duration: rightIsland.batteryExpanded ? 140 : 75; easing.type: Easing.OutCubic }
             }
 
             HoverHandler {
