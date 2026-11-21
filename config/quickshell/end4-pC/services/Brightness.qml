@@ -83,16 +83,13 @@ Singleton {
         onExited: root.ddcDetectFinished()
     }
 
-    Process {
-        id: setProc
-    }
-
     component BrightnessMonitor: QtObject {
         id: monitor
 
         required property ShellScreen screen
         property bool isDdc
         property string busNum
+        property string backlightDevice: ""
         property int rawMaxBrightness: 100
         readonly property real minBrightness: 0.05
         property real brightness
@@ -100,6 +97,7 @@ Singleton {
         property real multipliedBrightness: Math.max(minBrightness, Math.min(1, brightness * (Config.options.light.antiFlashbang.enable ? brightnessMultiplier : 1)))
         property bool ready: false
         property bool animateChanges: !monitor.isDdc
+        property var pendingSyncArgs: null
 
         onBrightnessChanged: {
             if (!monitor.ready) return;
@@ -125,21 +123,40 @@ Singleton {
             const match = root.ddcMonitors.find(m => m.name === screen.name && !root.monitors.slice(0, root.monitors.indexOf(this)).some(mon => mon.busNum === m.busNum));
             isDdc = !!match;
             busNum = match?.busNum ?? "";
-            initProc.command = isDdc ? ["ddcutil", "-b", busNum, "getvcp", "10", "--brief"] : ["sh", "-c", `echo "a b c $(brightnessctl g) $(brightnessctl m)"`];
+            initProc.command = isDdc ? ["ddcutil", "-b", busNum, "getvcp", "10", "--brief"] : ["brightnessctl", "-m", "--class", "backlight"];
             initProc.running = true;
         }
 
         readonly property Process initProc: Process {
             stdout: SplitParser {
                 onRead: data => {
-                    const [, , , current, max] = data.split(" ");
-                    monitor.rawMaxBrightness = parseInt(max);
-                    monitor.brightness = parseInt(current) / monitor.rawMaxBrightness;
+                    const trimmed = data.trim();
+                    if (!trimmed) return;
+                    if (monitor.isDdc) {
+                        const [, , , current, max] = trimmed.split(" ");
+                        monitor.rawMaxBrightness = parseInt(max);
+                        monitor.brightness = parseInt(current) / monitor.rawMaxBrightness;
+                    } else {
+                        const [device, , current, , max] = trimmed.split(",");
+                        monitor.backlightDevice = device;
+                        monitor.rawMaxBrightness = parseInt(max);
+                        monitor.brightness = parseInt(current) / monitor.rawMaxBrightness;
+                    }
                     monitor.ready = true;
                 }
             }
             onExited: (exitCode, exitStatus) => {
                 initializeMonitor(root.monitors.indexOf(monitor) + 1);
+            }
+        }
+
+        readonly property Process setProc: Process {
+            onExited: {
+                if (monitor.pendingSyncArgs) {
+                    const nextArgs = monitor.pendingSyncArgs;
+                    monitor.pendingSyncArgs = null;
+                    setProc.exec(nextArgs);
+                }
             }
         }
 
@@ -154,13 +171,22 @@ Singleton {
 
         function syncBrightness() {
             const brightnessValue = Math.max(monitor.multipliedBrightness, monitor.minBrightness);
+            let cmd;
             if (isDdc) {
                 const rawValueRounded = Math.max(Math.floor(brightnessValue * monitor.rawMaxBrightness), 1);
-                setProc.exec(["ddcutil", "-b", busNum, "setvcp", "10", rawValueRounded]);
+                cmd = ["ddcutil", "-b", busNum, "setvcp", "10", String(rawValueRounded)];
+            } else if (monitor.backlightDevice) {
+                const rawValue = Math.max(1, Math.min(monitor.rawMaxBrightness, Math.round(brightnessValue * monitor.rawMaxBrightness)));
+                cmd = ["busctl", "call", "org.freedesktop.login1", "/org/freedesktop/login1/session/auto", "org.freedesktop.login1.Session", "SetBrightness", "ssu", "backlight", monitor.backlightDevice, String(rawValue)];
             } else {
                 const valuePercentNumber = Math.max(Math.round(monitor.minBrightness * 100), Math.round(brightnessValue * 100));
                 const valuePercent = `${valuePercentNumber}%`;
-                setProc.exec(["brightnessctl", "--class", "backlight", "s", valuePercent, "--quiet"])
+                cmd = ["brightnessctl", "--class", "backlight", "s", valuePercent, "--quiet"];
+            }
+            if (setProc.running) {
+                monitor.pendingSyncArgs = cmd;
+            } else {
+                setProc.exec(cmd);
             }
         }
 
@@ -246,11 +272,11 @@ Singleton {
         target: "brightness"
 
         function increment() {
-            onPressed: root.increaseBrightness()
+            root.increaseBrightness()
         }
 
         function decrement() {
-            onPressed: root.decreaseBrightness()
+            root.decreaseBrightness()
         }
     }
 

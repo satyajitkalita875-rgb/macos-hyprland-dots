@@ -28,7 +28,7 @@ Rectangle {
         fillMode: Image.PreserveAspectCrop
         cache: false
         visible: status === Image.Ready
-        layer.enabled: true
+        layer.enabled: status === Image.Ready
         layer.effect: OpacityMask {
             maskSource: Rectangle {
                 width: avatarImage.width

@@ -204,7 +204,8 @@ ContentPage {
                     options: [
                         { displayName: Translation.tr("Default"), icon: "settings_panorama", value: "default" },
                         { displayName: Translation.tr("Minimal"), icon: "settings_heart", value: "minimal" },
-                        { displayName: Translation.tr("Dashboard"), icon: "dashboard", value: "dashboard" }
+                        { displayName: Translation.tr("Dashboard"), icon: "dashboard", value: "dashboard" },
+                        { displayName: Translation.tr("macOS"), icon: "laptop_mac", value: "macos" }
                     ]
                 }
                 ConfigSelectionArray {

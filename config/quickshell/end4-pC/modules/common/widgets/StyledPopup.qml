@@ -239,11 +239,23 @@ LazyLoader {
         WlrLayershell.namespace: root.morph ? "quickshell:popupMorph" : "quickshell:popup"
         WlrLayershell.layer: WlrLayer.Overlay
 
+        Component.onDestruction: {
+            if (popupWindow.innerContent && popupWindow.innerContent.parent === contentHolder) {
+                popupWindow.innerContent.anchors.centerIn = undefined
+                popupWindow.innerContent.parent = null
+            }
+        }
+
         Connections {
             target: root
             function onShouldShowChanged() {
                 if (root.shouldShow) {
                     closeAnim.stop();
+                    if (popupWindow.innerContent && popupWindow.innerContent.parent !== contentHolder) {
+                        popupWindow.innerContent.anchors.centerIn = undefined
+                        popupWindow.innerContent.parent = contentHolder
+                        popupWindow.innerContent.anchors.centerIn = contentHolder
+                    }
                     openAnim.restart();
                 } else {
                     openAnim.stop();
@@ -364,6 +376,10 @@ LazyLoader {
                 // Reparent content here once the window is ready
                 Component.onCompleted: {
                     if (popupWindow.innerContent) {
+                        if (popupWindow.innerContent.parent && popupWindow.innerContent.parent !== contentHolder) {
+                            popupWindow.innerContent.anchors.centerIn = undefined
+                            popupWindow.innerContent.parent = null
+                        }
                         popupWindow.innerContent.parent = contentHolder
                         popupWindow.innerContent.anchors.centerIn = contentHolder
                     }
@@ -425,7 +441,13 @@ LazyLoader {
 
         ParallelAnimation {
             id: closeAnim
-            onFinished: root.closing = false
+            onFinished: {
+                if (popupWindow.innerContent && popupWindow.innerContent.parent === contentHolder) {
+                    popupWindow.innerContent.anchors.centerIn = undefined
+                    popupWindow.innerContent.parent = null
+                }
+                root.closing = false
+            }
             NumberAnimation {
                 target: bodyScale
                 property: root.barVertical ? "xScale" : "yScale"

@@ -230,9 +230,13 @@ Scope {
 
                 exclusionMode: ExclusionMode.Ignore
                 WlrLayershell.namespace: "quickshell:appDrawer"
-                WlrLayershell.layer: WlrLayer.Overlay
-                WlrLayershell.keyboardFocus: GlobalStates.appDrawerOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+                WlrLayershell.layer: WlrLayer.Top
+                WlrLayershell.keyboardFocus: GlobalStates.appDrawerOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
                 color: "transparent"
+
+                mask: Region {
+                    item: GlobalStates.appDrawerOpen ? popoverSurface : null
+                }
 
                 anchors {
                     bottom: drawer.dockPos === "bottom"
@@ -254,12 +258,20 @@ Scope {
                     drawer.selectedIndex = -1;
                     drawer.keyboardMode = false;
                     appGrid.contentY = 0;
-                    GlobalFocusGrab.addDismissable(drawer);
                     Qt.callLater(() => {
                         if (GlobalStates.appDrawerOpen) {
+                            GlobalFocusGrab.addDismissable(drawer);
                             searchField.forceActiveFocus();
                         }
                     });
+                }
+
+                onVisibleChanged: {
+                    if (visible) {
+                        GlobalFocusGrab.addDismissable(drawer);
+                    } else {
+                        GlobalFocusGrab.removeDismissable(drawer);
+                    }
                 }
 
                 Component.onCompleted: {
@@ -278,6 +290,15 @@ Scope {
                         } else {
                             GlobalFocusGrab.removeDismissable(drawer);
                         }
+                    }
+                    function onSidebarRightOpenChanged() {
+                        if (GlobalStates.sidebarRightOpen && GlobalStates.appDrawerOpen) root.close();
+                    }
+                    function onOverviewOpenChanged() {
+                        if (GlobalStates.overviewOpen && GlobalStates.appDrawerOpen) root.close();
+                    }
+                    function onSearchOpenChanged() {
+                        if (GlobalStates.searchOpen && GlobalStates.appDrawerOpen) root.close();
                     }
                 }
 

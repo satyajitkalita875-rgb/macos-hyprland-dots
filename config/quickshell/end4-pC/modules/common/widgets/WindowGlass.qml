@@ -36,8 +36,8 @@ Item {
     readonly property bool floating: !fullscreenSurface && !!win && win.anchors === undefined && win.anchor === undefined
     readonly property bool popup: !fullscreenSurface && !!win && win.anchor !== undefined
 
-    readonly property var floatPos: GlassFloating.positions[win?.title ?? ""] ?? null
-    readonly property var floatMonitor: scr ? HyprlandData.monitors.find(m => m.name === scr.name) : null
+    readonly property var floatPos: live ? (GlassFloating.positions[win?.title ?? ""] ?? null) : null
+    readonly property var floatMonitor: (live && scr) ? HyprlandData.monitors.find(m => m.name === scr.name) : null
     readonly property real floatX: floatPos ? floatPos.x - (floatMonitor?.x ?? 0) : 0
     readonly property real floatY: floatPos ? floatPos.y - (floatMonitor?.y ?? 0) : 0
     readonly property bool wantsFloatTracking: live && floating && !!win?.visible

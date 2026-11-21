@@ -50,7 +50,7 @@ LockScreen {
 
         var saved = {}
         var targets = {}
-        var batch = "keyword animation workspaces,1,7,menu_decel,slidevert; "
+        var batch = "hyprctl keyword animation workspaces,1,7,menu_decel,slidevert; "
         for (var name in currents) {
             if (root.pushedTargets[name] === currents[name]) {
                 saved[name] = root.savedWorkspaces[name]
@@ -61,7 +61,7 @@ LockScreen {
             taken.add(target)
             saved[name] = currents[name]
             targets[name] = target
-            batch += `hyprctl dispatch 'hl.dsp.focus({monitor="${name}"})'; hyprctl dispatch 'hl.dsp.focus({workspace=${target}})';`
+            batch += `hyprctl dispatch focusmonitor "${name}"; hyprctl dispatch workspace ${target};`
         }
         root.savedWorkspaces = saved
         root.pushedTargets = targets
@@ -78,7 +78,7 @@ LockScreen {
                 var monName = Quickshell.screens[j].name
                 var wsId = root.savedWorkspaces[monName]
                 if (wsId !== undefined) {
-                    batch += `hyprctl dispatch 'hl.dsp.focus({monitor="${monName}"})'; hyprctl dispatch 'hl.dsp.focus({workspace=${wsId}})';`
+                    batch += `hyprctl dispatch focusmonitor "${monName}"; hyprctl dispatch workspace ${wsId};`
                 }
             }
             root.pushedTargets = ({})

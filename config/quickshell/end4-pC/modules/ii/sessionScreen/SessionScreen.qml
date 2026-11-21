@@ -29,7 +29,6 @@ Scope {
         function onSessionOpenChanged() {
             if (GlobalStates.sessionOpen) {
                 root.closing = false;
-                SessionWarnings.refresh();
             } else if (sessionLoader.item) {
                 root.closing = true;
             }
@@ -84,11 +83,11 @@ Scope {
                 }
             }
 
-            // Frosted dark scrim backdrop (Hyprland blurs everything behind this layer)
+            // Frosted scrim backdrop (Hyprland blurs everything behind this layer)
             Rectangle {
                 id: backdrop
                 anchors.fill: parent
-                color: Qt.rgba(0.04, 0.05, 0.08, sessionRoot.dark ? 0.42 : 0.18)
+                color: Qt.rgba(0.03, 0.04, 0.07, sessionRoot.dark ? 0.52 : 0.38)
                 opacity: 0
 
                 MouseArea {
@@ -97,316 +96,103 @@ Scope {
                 }
             }
 
-            // Animated modal container
+            // Minimal floating action row (no outer box)
             Item {
                 id: modalWrapper
                 anchors.centerIn: parent
-                implicitWidth: modalCard.implicitWidth
-                implicitHeight: modalCard.implicitHeight
+                implicitWidth: actionRow.implicitWidth
+                implicitHeight: actionRow.implicitHeight
                 opacity: 0
 
                 transform: [
                     Scale {
                         id: modalScale
                         origin.x: modalWrapper.width / 2
-                        origin.y: modalWrapper.height * 0.35
-                        xScale: 0.86
-                        yScale: 0.78
+                        origin.y: modalWrapper.height / 2
+                        xScale: 0.92
+                        yScale: 0.92
                     },
                     Translate {
                         id: modalTranslate
-                        y: -14
+                        y: 8
                     }
                 ]
 
-                // Soft elevated shadow
-                RectangularShadow {
-                    anchors.fill: modalCard
-                    radius: modalCard.radius
-                    blur: 36
-                    spread: 0
-                    offset: Qt.vector2d(0, 14)
-                    color: ColorUtils.applyAlpha(Appearance.m3colors.m3shadow, sessionRoot.dark ? 0.42 : 0.24)
-                    cached: false
-                }
+                RowLayout {
+                    id: actionRow
+                    anchors.centerIn: parent
+                    spacing: 28
 
-                // Modern macOS / Material You Frosted Glass Card
-                Rectangle {
-                    id: modalCard
-                    implicitWidth: cardLayout.implicitWidth + 44
-                    implicitHeight: cardLayout.implicitHeight + 40
-                    radius: 26
-                    clip: true
-                    color: Appearance.colors.colUiBackground
-                    border.width: 1
-                    border.color: Appearance.colors.colLayer0Border
-
-                    WindowGlass {
-                        anchors.fill: parent
-                        glassEnabled: sessionRoot.glassOn
-                        cardRadius: parent.radius
-                        tint: parent.color
+                    Keys.onPressed: event => {
+                        if (event.key === Qt.Key_Escape) {
+                            sessionRoot.hide();
+                            event.accepted = true;
+                        }
                     }
 
-                    // macOS inner glass rim highlight
-                    Rectangle {
-                        anchors.fill: parent
-                        anchors.margins: 1
-                        radius: parent.radius - 1
-                        color: "transparent"
-                        border.width: 1
-                        border.color: sessionRoot.dark ? Qt.rgba(1, 1, 1, 0.06) : Qt.rgba(1, 1, 1, 0.58)
-                        z: 20
+                    SessionActionButton {
+                        id: sessionLock
+                        focus: sessionRoot.isOpen
+                        buttonIcon: "lock"
+                        buttonText: Translation.tr("Lock")
+                        accentColor: Appearance.colors.colPrimary
+                        onClicked: {
+                            Session.lock();
+                            sessionRoot.hide();
+                        }
+                        KeyNavigation.right: sessionSleep
                     }
 
-                    // Swallow clicks inside the card
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {}
+                    SessionActionButton {
+                        id: sessionSleep
+                        buttonIcon: "bedtime"
+                        buttonText: Translation.tr("Sleep")
+                        accentColor: "#8B5CF6"
+                        onClicked: {
+                            Session.suspend();
+                            sessionRoot.hide();
+                        }
+                        KeyNavigation.left: sessionLock
+                        KeyNavigation.right: sessionLogout
                     }
 
-                    ColumnLayout {
-                        id: cardLayout
-                        anchors.centerIn: parent
-                        spacing: 18
-
-                        Keys.onPressed: event => {
-                            if (event.key === Qt.Key_Escape) {
-                                sessionRoot.hide();
-                                event.accepted = true;
-                            }
+                    SessionActionButton {
+                        id: sessionLogout
+                        buttonIcon: "logout"
+                        buttonText: Translation.tr("Log Out")
+                        accentColor: "#F59E0B"
+                        onClicked: {
+                            Session.logout();
+                            sessionRoot.hide();
                         }
+                        KeyNavigation.left: sessionSleep
+                        KeyNavigation.right: sessionReboot
+                    }
 
-                        // Header: User Avatar + Name + Uptime + Close button
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 12
-
-                            Rectangle {
-                                Layout.preferredWidth: 38
-                                Layout.preferredHeight: 38
-                                radius: 19
-                                color: ColorUtils.applyAlpha(Appearance.colors.colPrimary, sessionRoot.dark ? 0.24 : 0.16)
-                                border.width: 1
-                                border.color: ColorUtils.applyAlpha(Appearance.colors.colPrimary, 0.35)
-
-                                StyledText {
-                                    anchors.centerIn: parent
-                                    text: (SystemInfo.username && SystemInfo.username.length > 0)
-                                        ? SystemInfo.username.charAt(0).toUpperCase()
-                                        : "U"
-                                    font.pixelSize: 16
-                                    font.weight: Font.Bold
-                                    color: Appearance.colors.colPrimary
-                                }
-                            }
-
-                            ColumnLayout {
-                                spacing: 1
-
-                                StyledText {
-                                    text: SystemInfo.username || Translation.tr("Session")
-                                    font.pixelSize: 15
-                                    font.weight: Font.Bold
-                                    color: Appearance.colors.colOnLayer0
-                                }
-
-                                StyledText {
-                                    text: `${Translation.tr("Power & Session")}  •  ${Translation.tr("Up")} ${DateTime.uptime}`
-                                    font.pixelSize: 12
-                                    color: Appearance.colors.colSubtext
-                                }
-                            }
-
-                            Item { Layout.fillWidth: true }
-
-                            // Subtle Esc keycap hint
-                            Rectangle {
-                                Layout.preferredWidth: escText.implicitWidth + 14
-                                Layout.preferredHeight: 24
-                                radius: 7
-                                color: Appearance.colors.colLayer1
-                                border.width: 1
-                                border.color: ColorUtils.applyAlpha(Appearance.colors.colLayer0Border, 0.7)
-
-                                StyledText {
-                                    id: escText
-                                    anchors.centerIn: parent
-                                    text: "ESC"
-                                    font.pixelSize: 10
-                                    font.weight: Font.DemiBold
-                                    color: Appearance.colors.colSubtext
-                                }
-                            }
-
-                            // Circular Close Button
-                            Rectangle {
-                                Layout.preferredWidth: 30
-                                Layout.preferredHeight: 30
-                                radius: 15
-                                color: closeMouse.containsMouse ? Appearance.colors.colLayer2 : Appearance.colors.colLayer1
-                                border.width: 1
-                                border.color: ColorUtils.applyAlpha(Appearance.colors.colLayer0Border, 0.7)
-
-                                Behavior on color { ColorAnimation { duration: 120 } }
-
-                                MaterialSymbol {
-                                    anchors.centerIn: parent
-                                    text: "close"
-                                    iconSize: 16
-                                    color: Appearance.colors.colOnLayer0
-                                }
-
-                                MouseArea {
-                                    id: closeMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: sessionRoot.hide()
-                                }
-                            }
+                    SessionActionButton {
+                        id: sessionReboot
+                        buttonIcon: "restart_alt"
+                        buttonText: Translation.tr("Restart")
+                        accentColor: "#F97316"
+                        onClicked: {
+                            Session.reboot();
+                            sessionRoot.hide();
                         }
+                        KeyNavigation.left: sessionLogout
+                        KeyNavigation.right: sessionShutdown
+                    }
 
-                        // Subtle divider hairline
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 1
-                            color: ColorUtils.applyAlpha(Appearance.colors.colLayer0Border, 0.5)
+                    SessionActionButton {
+                        id: sessionShutdown
+                        buttonIcon: "power_settings_new"
+                        buttonText: Translation.tr("Shut Down")
+                        accentColor: "#EF4444"
+                        isDestructive: true
+                        onClicked: {
+                            Session.poweroff();
+                            sessionRoot.hide();
                         }
-
-                        // 2x4 Modern Glass Action Grid
-                        GridLayout {
-                            columns: 4
-                            columnSpacing: 12
-                            rowSpacing: 12
-
-                            SessionActionButton {
-                                id: sessionLock
-                                focus: sessionRoot.isOpen
-                                buttonIcon: "lock"
-                                buttonText: Translation.tr("Lock")
-                                accentColor: Appearance.colors.colPrimary
-                                onClicked: {
-                                    Session.lock();
-                                    sessionRoot.hide();
-                                }
-                                KeyNavigation.right: sessionSleep
-                                KeyNavigation.down: sessionHibernate
-                            }
-
-                            SessionActionButton {
-                                id: sessionSleep
-                                buttonIcon: "bedtime"
-                                buttonText: Translation.tr("Sleep")
-                                accentColor: sessionRoot.dark ? "#A78BFA" : "#6D28D9"
-                                onClicked: {
-                                    Session.suspend();
-                                    sessionRoot.hide();
-                                }
-                                KeyNavigation.left: sessionLock
-                                KeyNavigation.right: sessionLogout
-                                KeyNavigation.down: sessionShutdown
-                            }
-
-                            SessionActionButton {
-                                id: sessionLogout
-                                buttonIcon: "logout"
-                                buttonText: Translation.tr("Log Out")
-                                accentColor: sessionRoot.dark ? "#FBBF24" : "#D97706"
-                                onClicked: {
-                                    Session.logout();
-                                    sessionRoot.hide();
-                                }
-                                KeyNavigation.left: sessionSleep
-                                KeyNavigation.right: sessionTaskManager
-                                KeyNavigation.down: sessionReboot
-                            }
-
-                            SessionActionButton {
-                                id: sessionTaskManager
-                                buttonIcon: "monitoring"
-                                buttonText: Translation.tr("System Monitor")
-                                accentColor: sessionRoot.dark ? "#34D399" : "#059669"
-                                onClicked: {
-                                    Session.launchTaskManager();
-                                    sessionRoot.hide();
-                                }
-                                KeyNavigation.left: sessionLogout
-                                KeyNavigation.down: sessionFirmwareReboot
-                            }
-
-                            SessionActionButton {
-                                id: sessionHibernate
-                                buttonIcon: "downloading"
-                                buttonText: Translation.tr("Hibernate")
-                                accentColor: sessionRoot.dark ? "#60A5FA" : "#2563EB"
-                                onClicked: {
-                                    Session.hibernate();
-                                    sessionRoot.hide();
-                                }
-                                KeyNavigation.up: sessionLock
-                                KeyNavigation.right: sessionShutdown
-                            }
-
-                            SessionActionButton {
-                                id: sessionShutdown
-                                buttonIcon: "power_settings_new"
-                                buttonText: Translation.tr("Shut Down")
-                                accentColor: sessionRoot.dark ? "#FF5C5C" : "#DC2626"
-                                isDestructive: true
-                                onClicked: {
-                                    Session.poweroff();
-                                    sessionRoot.hide();
-                                }
-                                KeyNavigation.left: sessionHibernate
-                                KeyNavigation.right: sessionReboot
-                                KeyNavigation.up: sessionSleep
-                            }
-
-                            SessionActionButton {
-                                id: sessionReboot
-                                buttonIcon: "restart_alt"
-                                buttonText: Translation.tr("Restart")
-                                accentColor: sessionRoot.dark ? "#FB923C" : "#EA580C"
-                                onClicked: {
-                                    Session.reboot();
-                                    sessionRoot.hide();
-                                }
-                                KeyNavigation.left: sessionShutdown
-                                KeyNavigation.right: sessionFirmwareReboot
-                                KeyNavigation.up: sessionLogout
-                            }
-
-                            SessionActionButton {
-                                id: sessionFirmwareReboot
-                                buttonIcon: "memory"
-                                buttonText: Translation.tr("UEFI / BIOS")
-                                accentColor: Appearance.colors.colSubtext
-                                onClicked: {
-                                    Session.rebootToFirmware();
-                                    sessionRoot.hide();
-                                }
-                                KeyNavigation.up: sessionTaskManager
-                                KeyNavigation.left: sessionReboot
-                            }
-                        }
-
-                        // Inline Warnings (if download or package manager active)
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            visible: SessionWarnings.downloadRunning || SessionWarnings.packageManagerRunning
-                            spacing: 6
-
-                            WarningBanner {
-                                visible: SessionWarnings.downloadRunning
-                                text: Translation.tr("A download may still be in progress. Check your Downloads folder.")
-                            }
-
-                            WarningBanner {
-                                visible: SessionWarnings.packageManagerRunning
-                                text: Translation.tr("Your package manager is currently running.")
-                            }
-                        }
+                        KeyNavigation.left: sessionReboot
                     }
                 }
             }
@@ -477,63 +263,24 @@ Scope {
                 NumberAnimation {
                     target: modalScale
                     property: "yScale"
-                    to: 0.78
-                    duration: 280
-                    easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
+                    to: 0.92
+                    duration: 180
+                    easing.type: Easing.OutCubic
                 }
                 NumberAnimation {
                     target: modalScale
                     property: "xScale"
-                    to: 0.86
-                    duration: 260
-                    easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
+                    to: 0.92
+                    duration: 180
+                    easing.type: Easing.OutCubic
                 }
                 NumberAnimation {
                     target: modalTranslate
                     property: "y"
-                    to: -14
-                    duration: 260
-                    easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
+                    to: 8
+                    duration: 180
+                    easing.type: Easing.OutCubic
                 }
-            }
-        }
-    }
-
-    component WarningBanner: Rectangle {
-        id: warnBanner
-        property string text: ""
-        Layout.fillWidth: true
-        implicitHeight: warnRow.implicitHeight + 14
-        radius: 12
-        color: ColorUtils.applyAlpha(Appearance.m3colors.m3errorContainer, 0.82)
-        border.width: 1
-        border.color: ColorUtils.applyAlpha(Appearance.colors.colError, 0.45)
-
-        RowLayout {
-            id: warnRow
-            anchors {
-                fill: parent
-                leftMargin: 12
-                rightMargin: 12
-            }
-            spacing: 8
-
-            MaterialSymbol {
-                text: "warning"
-                fill: 1
-                iconSize: 16
-                color: Appearance.m3colors.m3onErrorContainer
-            }
-
-            StyledText {
-                Layout.fillWidth: true
-                text: warnBanner.text
-                font.pixelSize: 12
-                color: Appearance.m3colors.m3onErrorContainer
-                wrapMode: Text.WordWrap
             }
         }
     }

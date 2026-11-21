@@ -162,7 +162,7 @@ Button {
             animation: Appearance?.animation.elementMoveFast.colorAnimation.createObject(this)
         }
 
-        layer.enabled: ripple.opacity > 0
+        layer.enabled: root.rippleEnabled && ripple.opacity > 0
         layer.effect: OpacityMask {
             maskSource: Rectangle {
                 width: buttonBackground.width
@@ -171,10 +171,13 @@ Button {
             }
         }
 
-        WindowGlass {
+        Loader {
             anchors.fill: parent
-            glassEnabled: root.glassActive
-            cardRadius: root.buttonEffectiveRadius
+            active: root.glassActive
+            sourceComponent: WindowGlass {
+                glassEnabled: true
+                cardRadius: root.buttonEffectiveRadius
+            }
         }
 
         Item {
@@ -182,21 +185,25 @@ Button {
             width: ripple.implicitWidth
             height: ripple.implicitHeight
             opacity: 0
-            visible: width > 0 && height > 0
+            visible: root.rippleEnabled && width > 0 && height > 0
 
             property real implicitWidth: 0
             property real implicitHeight: 0
 
             Behavior on opacity {
+                enabled: root.rippleEnabled
                 animation: Appearance?.animation.elementMoveFast.colorAnimation.createObject(this)
             }
 
-            RadialGradient {
+            Loader {
                 anchors.fill: parent
-                gradient: Gradient {
-                    GradientStop { position: 0.0; color: root.rippleColor }
-                    GradientStop { position: 0.3; color: root.rippleColor }
-                    GradientStop { position: 0.5; color: Qt.rgba(root.rippleColor.r, root.rippleColor.g, root.rippleColor.b, 0) }
+                active: root.rippleEnabled && ripple.opacity > 0
+                sourceComponent: RadialGradient {
+                    gradient: Gradient {
+                        GradientStop { position: 0.0; color: root.rippleColor }
+                        GradientStop { position: 0.3; color: root.rippleColor }
+                        GradientStop { position: 0.5; color: Qt.rgba(root.rippleColor.r, root.rippleColor.g, root.rippleColor.b, 0) }
+                    }
                 }
             }
 

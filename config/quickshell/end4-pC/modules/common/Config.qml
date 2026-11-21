@@ -571,6 +571,22 @@ Singleton {
                     property bool showMediaControls: false
                     property string leftWidget: "none"
                     property string rightWidget: "none"
+                    property string stackStyle: "fluid" // "fluid" (ColorOS 15 separate cards), "unified"
+                    property int expandedWidth: 376
+                    property int cardRadius: 22
+                    property int cardSpacing: 8
+                    property real animationSpeed: 1.0
+                    property bool springBounce: true
+                    property bool expandOnHover: true
+                    property bool showRecordingCard: true
+                    property bool showCompactRecStop: true
+                    property bool showMusicCard: true
+                    property bool showMusicScrubber: true
+                    property bool showMusicEqualizer: true
+                    property bool stackNotifications: true
+                    property bool showCalendarCard: true
+                    property bool showTasksInCalendar: true
+                    property bool showUptimeFooter: true
                 }
                 property JsonObject divider: JsonObject {
                     property string style: "rect" // rect - dot - space

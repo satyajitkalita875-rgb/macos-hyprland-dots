@@ -79,10 +79,18 @@ Scope {
                 if (fullscreenOnThisMonitor)
                     return Config.options?.dock.hoverToReveal && dockMouseArea.containsMouse
                 return root.pinned
+                    || GlobalStates.appDrawerOpen
                     || (Config.options?.dock.hoverToReveal && (dockMouseArea.containsMouse || GlobalStates.isFrameHovered(dockRoot.screen?.name, dockRoot.position)))
                     || activeApps.requestDockShow
                     || dragSlots.requestDockShow
                     || (!ToplevelManager.activeToplevel?.activated)
+            }
+
+            Component.onCompleted: {
+                GlobalFocusGrab.addPersistent(dockRoot);
+            }
+            Component.onDestruction: {
+                GlobalFocusGrab.removePersistent(dockRoot);
             }
 
             exclusiveZone: (root.pinned && !fullscreenOnThisMonitor)

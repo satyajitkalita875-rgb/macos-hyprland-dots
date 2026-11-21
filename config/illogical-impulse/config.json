@@ -125,10 +125,10 @@
         "splitSide": "left",
         "thumbnailPath": "",
         "wallpaperAnimation": "magic",
-        "wallpaperPath": "__HOME__/Pictures/Wallpapers/macOS-Tahoe-Light.png",
+        "wallpaperPath": "__HOME__/Pictures/Wallpapers/macOS-Big-Sur-Day.jpg",
         "widgets": {
-            "blurRadius": 60.557731958762886,
-            "blurWidgets": false,
+            "blurRadius": 9.378350515463918,
+            "blurWidgets": true,
             "calendar": {
                 "enable": false,
                 "placementStrategy": "free",
@@ -169,7 +169,7 @@
                     "showDate": true,
                     "vertical": false
                 },
-                "enable": false,
+                "enable": true,
                 "pixel": {
                     "orientation": "vertical"
                 },
@@ -182,9 +182,9 @@
                 "showOnlyWhenLocked": false,
                 "style": "cookie",
                 "styleLocked": "cookie",
-                "x": 100,
-                "y": 100,
-                "z": 0
+                "x": 265,
+                "y": 595,
+                "z": 5
             },
             "customImage": {
                 "enable": false,
@@ -232,21 +232,21 @@
             "images": {
                 "enable": false,
                 "placementStrategy": "free",
-                "x": 400,
-                "y": 100,
-                "z": 0
+                "x": 1584,
+                "y": 72,
+                "z": 2
             },
             "media": {
                 "backgroundShape": "Cookie4Sided",
-                "enable": false,
+                "enable": true,
                 "placementStrategy": "free",
                 "showControls": true,
                 "showLyrics": false,
                 "showTitles": true,
                 "sizeMode": "1x3",
-                "x": 800,
-                "y": 500,
-                "z": 0
+                "x": 36,
+                "y": 216,
+                "z": 2
             },
             "menuHidden": [
             ],
@@ -258,12 +258,12 @@
                 "z": 0
             },
             "resources": {
-                "enable": false,
+                "enable": true,
                 "placementStrategy": "free",
                 "vertical": false,
-                "x": 400,
-                "y": 100,
-                "z": 2
+                "x": 36,
+                "y": 72,
+                "z": 4
             },
             "shadow": false,
             "sticker": {
@@ -305,7 +305,7 @@
             },
             "visualizer": {
                 "colorSource": "theme",
-                "enable": false,
+                "enable": true,
                 "height": 260,
                 "placementStrategy": "free",
                 "ringSize": 380,
@@ -325,7 +325,7 @@
                 "z": 0
             },
             "worldClock": {
-                "clockCount": 4,
+                "clockCount": 1,
                 "enable": false,
                 "placementStrategy": "free",
                 "sizeMode": "2x2",
@@ -336,12 +336,12 @@
                     "America/New_York"
                 ],
                 "vertical": false,
-                "x": 400,
-                "y": 100,
-                "z": 0
+                "x": 1020,
+                "y": 144,
+                "z": 3
             }
         },
-        "widgetsLocked": false
+        "widgetsLocked": true
     },
     "bar": {
         "aiUsage": {
@@ -373,9 +373,25 @@
             "style": "rect"
         },
         "dynamicIsland": {
+            "animationSpeed": 1.35,
+            "cardRadius": 22,
+            "cardSpacing": 8,
+            "expandOnHover": true,
+            "expandedWidth": 376,
             "leftWidget": "none",
             "rightWidget": "none",
+            "showCalendarCard": true,
+            "showCompactRecStop": true,
             "showMediaControls": false,
+            "showMusicCard": true,
+            "showMusicEqualizer": true,
+            "showMusicScrubber": true,
+            "showRecordingCard": true,
+            "showTasksInCalendar": true,
+            "showUptimeFooter": true,
+            "springBounce": true,
+            "stackNotifications": true,
+            "stackStyle": "unified",
             "visualizerStyle": "dots"
         },
         "floatStyleShadow": true,
@@ -503,7 +519,7 @@
         "locale": "en-GB"
     },
     "conflictKiller": {
-        "autoKillNotificationDaemons": false,
+        "autoKillNotificationDaemons": true,
         "autoKillTrays": false
     },
     "crosshair": {
@@ -511,7 +527,7 @@
     },
     "custom": {
         "colorizeIcon": true,
-        "distroIcon": "google-gemini-symbolic",
+        "distroIcon": "linux-symbolic",
         "iconColor": "onLayer0",
         "iconsPath": ""
     },
@@ -530,13 +546,13 @@
         ],
         "magnification": 1.2,
         "magnify": false,
-        "monochromeIcons": true,
+        "monochromeIcons": false,
         "pinnedApps": [
             "google-chrome",
-            "brave-origin",
-            "firefox",
             "alacritty",
-            "ai.storyteller.photocraft"
+            "brave-origin",
+            "antigravity",
+            "chrome-akpamiohjfcnimfljfndmaldlcfphjmp-profile_1"
         ],
         "pinnedOnStartup": true,
         "position": "bottom",
@@ -569,7 +585,7 @@
             "blur": {
                 "enabled": true,
                 "passes": 3,
-                "size": 4
+                "size": 18
             },
             "inactiveOpacity": 0.9,
             "rounding": 22,
@@ -688,7 +704,7 @@
         "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
     },
     "notifications": {
-        "position": "top_right",
+        "position": "top_left",
         "timeout": 7000
     },
     "osd": {
@@ -798,7 +814,7 @@
         "collapsedSections": [
             "AI"
         ],
-        "style": "default"
+        "style": "macos"
     },
     "sidebar": {
         "ai": {
@@ -919,7 +935,7 @@
     "time": {
         "dateFormat": "ddd, dd/MM",
         "dateWithYearFormat": "dd/MM/yyyy",
-        "format": "hh:mm",
+        "format": "h:mm AP",
         "pomodoro": {
             "breakTime": 300,
             "cyclesBeforeLongBreak": 4,

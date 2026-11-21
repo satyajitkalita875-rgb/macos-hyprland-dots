@@ -1024,7 +1024,6 @@ ContentPage {
             icon: "neurology"
             title: Translation.tr("AI Usage")
             visible: !page.isMacosBar && page.isUsed("aiUsage")
-            visible: !page.isMacosBar && page.isUsed("aiUsage")
 
             GroupedList {
                 ConfigSwitch {

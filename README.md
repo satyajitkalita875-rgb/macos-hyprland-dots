@@ -38,6 +38,9 @@ curl -fsSL https://raw.githubusercontent.com/satyajitkalita875-rgb/macos-hyprlan
 | `Super + Shift + M` | Restore last minimized window |
 | `Super + D` | Toggle maximize |
 | `Super + F` | Toggle true fullscreen |
+| `Super + Shift + F` | Toggle floating for active window |
+| `Super + Alt + T` | Switch to Tiling window mode |
+| `Super + Alt + S` | Switch to Stacking (floating) window mode |
 | `Super + Q` | Close active window |
 | `Super + L` | Lock screen (`hyprlock`) |
 | `Super + Alt + C` | Session / Power menu |

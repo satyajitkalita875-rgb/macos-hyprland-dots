@@ -43,6 +43,25 @@ Item {
     readonly property bool showControlCenter: macCfg?.showControlCenter ?? true
     readonly property bool showClock: macCfg?.showClock ?? true
 
+    // Dynamic Island live customization options (Settings -> Dynamic Island)
+    readonly property var diCfg: Config.options?.bar?.dynamicIsland ?? null
+    readonly property bool diFluidStack: (diCfg?.stackStyle ?? "fluid") === "fluid"
+    readonly property int diExpandedWidth: diCfg?.expandedWidth ?? 376
+    readonly property int diCardRadius: diCfg?.cardRadius ?? 22
+    readonly property int diCardSpacing: diCfg?.cardSpacing ?? 8
+    readonly property real diAnimSpeed: diCfg?.animationSpeed ?? 1.0
+    readonly property bool diSpringBounce: diCfg?.springBounce ?? true
+    readonly property bool diExpandOnHover: diCfg?.expandOnHover ?? true
+    readonly property bool diShowRecCard: diCfg?.showRecordingCard ?? true
+    readonly property bool diShowCompactRecStop: diCfg?.showCompactRecStop ?? true
+    readonly property bool diShowMusicCard: diCfg?.showMusicCard ?? true
+    readonly property bool diShowMusicScrubber: diCfg?.showMusicScrubber ?? true
+    readonly property bool diShowMusicEqualizer: diCfg?.showMusicEqualizer ?? true
+    readonly property bool diStackNotifications: diCfg?.stackNotifications ?? true
+    readonly property bool diShowCalendarCard: diCfg?.showCalendarCard ?? true
+    readonly property bool diShowTasksInCal: diCfg?.showTasksInCalendar ?? true
+    readonly property bool diShowUptimeFooter: diCfg?.showUptimeFooter ?? true
+
     // Media state: only show music in the Dynamic Island when actively playing
     // (and keep media visible inside an already-expanded island if user pauses while hovering)
     readonly property MprisPlayer activePlayer: MprisController.activePlayer
@@ -50,6 +69,80 @@ Item {
     property bool keepMediaWhileExpanded: false
     readonly property bool showCompactMusic: root.isMusicPlaying
     readonly property bool showExpandedMusic: root.activePlayer !== null && (root.isMusicPlaying || root.keepMediaWhileExpanded)
+
+    // Screen recording state (driven by Persistent.states.record.enable from record.sh)
+    readonly property bool isRecording: Persistent.states?.record?.enable ?? false
+    property int recordingElapsedSeconds: 0
+
+    onIsRecordingChanged: {
+        if (!isRecording) recordingElapsedSeconds = 0;
+    }
+
+    function formatRecordingTime(s) {
+        return Math.floor(s / 60).toString().padStart(2, "0") + ":" + (s % 60).toString().padStart(2, "0");
+    }
+
+    function formatMediaTime(sec) {
+        const total = Math.max(0, Math.floor(Number(sec) || 0));
+        const m = Math.floor(total / 60);
+        const s = total % 60;
+        return m.toString().padStart(2, "0") + ":" + s.toString().padStart(2, "0");
+    }
+
+    Timer {
+        interval: 1000
+        repeat: true
+        running: root.showExpandedMusic && centerIsland.expanded && (root.activePlayer?.isPlaying ?? false)
+        onTriggered: root.activePlayer?.positionChanged()
+    }
+
+    function stopRecording() {
+        Quickshell.execDetached([Directories.recordScriptPath]);
+    }
+
+    // Unified notification stack state (all apps stacked into the Dynamic Island)
+    readonly property var liveNotifs: (root.diStackNotifications && !Notifications.silent && Notifications.popupList)
+        ? Notifications.popupList.slice().reverse()
+        : []
+    readonly property bool hasLiveNotifs: root.liveNotifs.length > 0
+    readonly property var allNotifsNewest: Notifications.list ? Notifications.list.slice().reverse() : []
+    readonly property int totalNotifCount: root.allNotifsNewest.length
+
+    function resolveNotifIcon(notif) {
+        if (!notif) return "";
+        const appIcon = String(notif.appIcon ?? "");
+        if (appIcon.length > 0) {
+            const p = SystemAppearance.iconPath(appIcon, true);
+            if (p && p.length > 0) return p;
+        }
+        const appName = String(notif.appName ?? "");
+        if (appName.length > 0) {
+            const guessed = AppSearch.guessIcon(appName);
+            if (guessed && guessed !== "application-x-executable" && guessed !== "image-missing") {
+                const p2 = SystemAppearance.iconPath(guessed, true);
+                if (p2 && p2.length > 0) return p2;
+            }
+        }
+        return "";
+    }
+
+    function formatNotifAge(ts) {
+        if (!ts) return "";
+        const diffSec = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+        if (diffSec < 60) return Translation.tr("now");
+        const diffMin = Math.floor(diffSec / 60);
+        if (diffMin < 60) return `${diffMin}m`;
+        const diffHr = Math.floor(diffMin / 60);
+        if (diffHr < 24) return `${diffHr}h`;
+        return `${Math.floor(diffHr / 24)}d`;
+    }
+
+    Timer {
+        interval: 1000
+        repeat: true
+        running: root.isRecording
+        onTriggered: root.recordingElapsedSeconds++
+    }
 
     // Floating iPhone Dynamic Island geometry
     readonly property real pillHeight: Math.max(32, (macCfg?.height ?? 28) + 4)
@@ -340,14 +433,14 @@ Item {
     }
 
     // ============================================================
-    // 2. CENTER DYNAMIC ISLAND (Follows Device Material You Theme!)
-    //    - Idle: Compact floating pill showing ONLY Date & Time
-    //    - Music Playing: Widens with Album Art + Animated Waveform
-    //    - Hovered: Smoothly expands downward in-place showing Calendar,
-    //      Tasks, Uptime & Expanded Media Player (when playing)
+    // 2. CENTER DYNAMIC ISLAND — ColorOS 15 Fluid Cloud Stacked Cards
+    //    - Idle: Compact floating pill (Date & Time + live badges)
+    //    - Live Notification: Auto-morphs into stacked notification card
+    //    - Hovered: Cascades into separate floating frosted glass cards
+    //      (Screen Recording + Now Playing + Stacked Notifications + Calendar)
     // ============================================================
     RectangularShadow {
-        visible: centerIsland.visible
+        visible: centerIsland.visible && !(centerIsland.expanded && root.diFluidStack)
         anchors.fill: centerIsland
         radius: centerIsland.radius
         blur: centerIsland.expanded ? 24 : 18
@@ -360,7 +453,7 @@ Item {
 
     Rectangle {
         id: centerIsland
-        visible: root.showClock || root.showCompactMusic
+        visible: root.showClock || root.showCompactMusic || root.isRecording || root.hasLiveNotifs
         z: 20
         anchors {
             horizontalCenter: parent.horizontalCenter
@@ -370,6 +463,7 @@ Item {
 
         property bool expanded: false
         property var today: new Date()
+        readonly property bool showingLiveNotif: !expanded && root.hasLiveNotifs
 
         Timer {
             interval: 60000
@@ -380,7 +474,7 @@ Item {
 
         Timer {
             id: centerCollapseTimer
-            interval: 80
+            interval: 140
             onTriggered: {
                 if (!centerHover.hovered) {
                     centerIsland.expanded = false;
@@ -394,64 +488,86 @@ Item {
             onHoveredChanged: {
                 if (hovered) {
                     centerCollapseTimer.stop();
-                    if (root.isMusicPlaying) root.keepMediaWhileExpanded = true;
-                    centerIsland.today = new Date();
-                    centerIsland.expanded = true;
+                    if (root.diExpandOnHover) {
+                        if (root.isMusicPlaying) root.keepMediaWhileExpanded = true;
+                        if (Notifications.unread > 0) Notifications.markAllRead();
+                        centerIsland.today = new Date();
+                        centerIsland.expanded = true;
+                    }
                 } else {
                     centerCollapseTimer.restart();
                 }
             }
         }
 
-        readonly property real collapsedW: compactIslandRow.implicitWidth + 28
-        readonly property real expandedW: 368
-        readonly property real expandedH: centerExpandedCol.implicitHeight + 28
+        // Click to toggle when "Expand on hover" is disabled
+        TapHandler {
+            enabled: !root.diExpandOnHover
+            onTapped: {
+                if (!centerIsland.expanded) {
+                    if (root.isMusicPlaying) root.keepMediaWhileExpanded = true;
+                    if (Notifications.unread > 0) Notifications.markAllRead();
+                    centerIsland.today = new Date();
+                    centerIsland.expanded = true;
+                } else {
+                    centerIsland.expanded = false;
+                    root.keepMediaWhileExpanded = false;
+                }
+            }
+        }
 
-        width: expanded ? expandedW : collapsedW
-        height: expanded ? expandedH : root.pillHeight
-        radius: expanded ? 26 : root.pillHeight / 2
-        clip: true
-        color: root.islandBg
-        border.width: root.showBorder ? 1 : 0
-        border.color: expanded
+        readonly property real collapsedW: compactIslandRow.implicitWidth + 28
+        readonly property real liveNotifW: Math.min(440, root.diExpandedWidth)
+        readonly property real liveNotifH: liveNotifWrap.implicitHeight + 16
+        readonly property real expandedW: root.diExpandedWidth
+        readonly property real expandedH: Math.min(660, centerExpandedCol.implicitHeight + (root.diFluidStack ? 12 : 20))
+
+        width: expanded ? expandedW : (showingLiveNotif ? liveNotifW : collapsedW)
+        height: expanded ? expandedH : (showingLiveNotif ? liveNotifH : root.pillHeight)
+        radius: expanded ? root.diCardRadius : (showingLiveNotif ? root.diCardRadius : root.pillHeight / 2)
+        clip: !(expanded && root.diFluidStack)
+        color: (expanded && root.diFluidStack) ? "transparent" : root.islandBg
+        border.width: (!(expanded && root.diFluidStack) && root.showBorder) ? 1 : 0
+        border.color: (showingLiveNotif || (expanded && !root.diFluidStack))
             ? ColorUtils.applyAlpha(root.accentColor, root.dark ? 0.45 : 0.35)
             : root.islandBorder
 
         WindowGlass {
             anchors.fill: parent
-            glassEnabled: root.glassOn
+            glassEnabled: root.glassOn && !(centerIsland.expanded && root.diFluidStack)
             cardRadius: parent.radius
             tint: parent.color
         }
 
         Behavior on width {
             NumberAnimation {
-                duration: 230
+                duration: Math.round((centerIsland.expanded ? 280 : 220) * root.diAnimSpeed)
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: centerIsland.expanded
-                    ? Appearance.animationCurves.expressiveFastSpatial
+                easing.bezierCurve: (centerIsland.expanded && root.diSpringBounce)
+                    ? [0.22, 1.18, 0.36, 1.0, 1, 1]
                     : Appearance.animationCurves.expressiveDefaultSpatial
             }
         }
         Behavior on height {
             NumberAnimation {
-                duration: 250
+                duration: Math.round((centerIsland.expanded ? 300 : 230) * root.diAnimSpeed)
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: centerIsland.expanded
-                    ? Appearance.animationCurves.expressiveFastSpatial
+                easing.bezierCurve: (centerIsland.expanded && root.diSpringBounce)
+                    ? [0.22, 1.15, 0.36, 1.0, 1, 1]
                     : Appearance.animationCurves.expressiveDefaultSpatial
             }
         }
         Behavior on radius {
             NumberAnimation {
-                duration: 220
+                duration: Math.round(220 * root.diAnimSpeed)
                 easing.type: Easing.OutCubic
             }
         }
         Behavior on border.color { ColorAnimation { duration: 160 } }
 
-        // Inner macOS glass rim matching Control Center & Dock
+        // Inner macOS glass rim (only on collapsed / live-notif / unified pill; fluid stack uses per-card rims)
         Rectangle {
+            visible: !(centerIsland.expanded && root.diFluidStack)
             anchors.fill: parent
             anchors.margins: 1
             radius: Math.max(0, parent.radius - 1)
@@ -473,7 +589,7 @@ Item {
             }
         }
 
-        // --- COMPACT PILL CONTENT (Date & Time + Live Playing Art/Waveform when music plays) ---
+        // --- COMPACT PILL CONTENT (Date & Time + Live Recording + Music + Unread Badge) ---
         RowLayout {
             id: compactIslandRow
             anchors {
@@ -482,11 +598,81 @@ Item {
             }
             height: root.pillHeight
             spacing: 8
-            opacity: centerIsland.expanded ? 0 : 1
+            opacity: (centerIsland.expanded || centerIsland.showingLiveNotif) ? 0 : 1
             visible: opacity > 0.02
 
             Behavior on opacity {
-                NumberAnimation { duration: centerIsland.expanded ? 110 : 220; easing.type: Easing.OutCubic }
+                NumberAnimation { duration: (centerIsland.expanded || centerIsland.showingLiveNotif) ? 110 : 220; easing.type: Easing.OutCubic }
+            }
+
+            // Compact Live Screen Recording Pill (pulsing red dot + timer + one-click Stop button)
+            Rectangle {
+                visible: root.isRecording
+                Layout.alignment: Qt.AlignVCenter
+                Layout.preferredWidth: compactRecRow.implicitWidth + 10
+                Layout.preferredHeight: 22
+                radius: 11
+                color: ColorUtils.applyAlpha(root.macRed, root.dark ? 0.24 : 0.15)
+                border.width: 1
+                border.color: ColorUtils.applyAlpha(root.macRed, 0.45)
+
+                RowLayout {
+                    id: compactRecRow
+                    anchors.centerIn: parent
+                    spacing: 5
+
+                    Rectangle {
+                        Layout.alignment: Qt.AlignVCenter
+                        width: 7
+                        height: 7
+                        radius: 3.5
+                        color: root.macRed
+
+                        SequentialAnimation on opacity {
+                            running: root.isRecording && !centerIsland.expanded
+                            loops: Animation.Infinite
+                            NumberAnimation { to: 0.25; duration: 650; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: 1.0; duration: 650; easing.type: Easing.InOutSine }
+                        }
+                    }
+
+                    StyledText {
+                        Layout.alignment: Qt.AlignVCenter
+                        text: root.formatRecordingTime(root.recordingElapsedSeconds)
+                        font.pixelSize: 11
+                        font.weight: Font.DemiBold
+                        font.features: ({ "tnum": 1 })
+                        color: root.macRed
+                    }
+
+                    Rectangle {
+                        visible: root.diShowCompactRecStop
+                        Layout.alignment: Qt.AlignVCenter
+                        width: 16
+                        height: 16
+                        radius: 8
+                        color: compactStopMouse.pressed
+                            ? ColorUtils.applyAlpha(root.macRed, 0.85)
+                            : root.macRed
+
+                        Rectangle {
+                            anchors.centerIn: parent
+                            width: 6
+                            height: 6
+                            radius: 1.5
+                            color: "#FFFFFF"
+                        }
+
+                        MouseArea {
+                            id: compactStopMouse
+                            anchors.fill: parent
+                            anchors.margins: -3
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.stopRecording()
+                        }
+                    }
+                }
             }
 
             // Compact Album Art (ONLY shown while music is actively playing)
@@ -565,18 +751,41 @@ Item {
                 }
 
                 Rectangle {
-                    visible: Notifications.unread > 0 && !Notifications.silent
+                    visible: root.totalNotifCount > 0 && !Notifications.silent
                     Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredWidth: 5
-                    Layout.preferredHeight: 5
-                    radius: 2.5
-                    color: root.accentColor
+                    Layout.preferredWidth: compactNotifBadgeRow.implicitWidth + 8
+                    Layout.preferredHeight: 16
+                    radius: 8
+                    color: ColorUtils.applyAlpha(root.accentColor, root.dark ? 0.28 : 0.16)
+
+                    Row {
+                        id: compactNotifBadgeRow
+                        anchors.centerIn: parent
+                        spacing: 3
+
+                        MaterialSymbol {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "notifications"
+                            fill: 1
+                            iconSize: 10
+                            color: root.accentColor
+                        }
+
+                        StyledText {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: `${root.totalNotifCount}`
+                            font.pixelSize: 10
+                            font.weight: Font.Bold
+                            font.features: ({ "tnum": 1 })
+                            color: root.accentColor
+                        }
+                    }
                 }
             }
 
             // Animated 3-bar Dynamic Island Sound Waveform (ONLY while music is actively playing)
             Row {
-                visible: root.showCompactMusic
+                visible: root.showCompactMusic && root.diShowMusicEqualizer
                 Layout.alignment: Qt.AlignVCenter
                 spacing: 2
 
@@ -605,341 +814,1178 @@ Item {
             }
         }
 
-        // --- EXPANDED DYNAMIC ISLAND CONTENT (Calendar + Tasks + Live Media Player) ---
-        ColumnLayout {
-            id: centerExpandedCol
+        // --- LIVE UNIFIED NOTIFICATION STACK BANNER (Auto-pops in Dynamic Island for ALL apps) ---
+        Item {
+            id: liveNotifWrap
             anchors {
                 top: parent.top
-                topMargin: 14
+                topMargin: 8
                 horizontalCenter: parent.horizontalCenter
             }
-            width: centerIsland.expandedW - 28
-            spacing: 11
-            opacity: centerIsland.expanded ? 1 : 0
+            width: centerIsland.liveNotifW - 18
+            implicitHeight: liveNotifCol.implicitHeight
+            opacity: centerIsland.showingLiveNotif ? 1 : 0
             visible: opacity > 0.02
 
-            transform: Translate {
-                y: centerIsland.expanded ? 0 : -8
-                Behavior on y {
-                    NumberAnimation {
-                        duration: 180
-                        easing.type: Easing.BezierSpline
-                        easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
-                    }
-                }
-            }
-
             Behavior on opacity {
-                NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
+                NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
             }
 
-            // Expanded Top Row: Month Year + Live Time & Day Pill
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
+            readonly property var topNotif: root.liveNotifs.length > 0 ? root.liveNotifs[0] : null
+            readonly property string topIconUrl: root.resolveNotifIcon(topNotif)
+            readonly property int extraCount: Math.max(0, root.liveNotifs.length - 1)
 
-                Row {
-                    spacing: 6
-                    StyledText {
-                        text: Qt.locale().toString(centerIsland.today, "MMMM")
-                        font.pixelSize: 18
-                        font.weight: Font.Bold
-                        color: root.fgColor
-                    }
-                    StyledText {
-                        text: Qt.locale().toString(centerIsland.today, "yyyy")
-                        font.pixelSize: 18
-                        color: root.fgMuted
-                    }
-                }
+            ColumnLayout {
+                id: liveNotifCol
+                width: parent.width
+                spacing: 4
 
-                Item { Layout.fillWidth: true }
-
-                StyledText {
-                    text: DateTime.time
-                    font.pixelSize: 13
-                    font.weight: Font.DemiBold
-                    font.features: ({ "tnum": 1 })
-                    color: root.fgColor
-                }
-
+                // Top Notification Card
                 Rectangle {
-                    Layout.preferredWidth: expDayLabel.implicitWidth + 14
-                    Layout.preferredHeight: 22
-                    radius: 11
-                    color: ColorUtils.applyAlpha(root.accentColor, root.dark ? 0.24 : 0.14)
+                    Layout.fillWidth: true
+                    implicitHeight: liveNotifRow.implicitHeight + 14
+                    radius: 15
+                    color: root.innerCardBg
                     border.width: 1
-                    border.color: ColorUtils.applyAlpha(root.accentColor, 0.32)
+                    border.color: root.innerCardBorder
 
-                    StyledText {
-                        id: expDayLabel
-                        anchors.centerIn: parent
-                        text: Qt.locale().toString(centerIsland.today, "dddd")
-                        font.pixelSize: 11
-                        font.weight: Font.DemiBold
-                        color: root.accentColor
-                    }
-                }
-            }
+                    RowLayout {
+                        id: liveNotifRow
+                        anchors {
+                            left: parent.left
+                            right: parent.right
+                            verticalCenter: parent.verticalCenter
+                            leftMargin: 10
+                            rightMargin: 8
+                        }
+                        spacing: 10
 
-            // Expanded Now Playing Media Card (ONLY shown when music is playing)
-            Rectangle {
-                visible: root.showExpandedMusic
-                Layout.fillWidth: true
-                Layout.preferredHeight: 66
-                radius: 16
-                color: root.innerCardBg
-                border.width: 1
-                border.color: root.innerCardBorder
-
-                RowLayout {
-                    anchors {
-                        fill: parent
-                        leftMargin: 10
-                        rightMargin: 10
-                    }
-                    spacing: 10
-
-                    // 46x46 Rounded Album Art
-                    Item {
-                        Layout.preferredWidth: 46
-                        Layout.preferredHeight: 46
-
+                        // App Icon Tile
                         Rectangle {
-                            anchors.fill: parent
-                            radius: 10
-                            color: ColorUtils.applyAlpha(root.accentColor, root.dark ? 0.24 : 0.14)
+                            Layout.alignment: Qt.AlignVCenter
+                            Layout.preferredWidth: 34
+                            Layout.preferredHeight: 34
+                            radius: 9
+                            color: ColorUtils.applyAlpha(root.accentColor, root.dark ? 0.22 : 0.14)
+
+                            Image {
+                                id: liveNotifImg
+                                anchors.fill: parent
+                                anchors.margins: 4
+                                source: liveNotifWrap.topIconUrl
+                                fillMode: Image.PreserveAspectFit
+                                asynchronous: true
+                                visible: liveNotifWrap.topIconUrl !== "" && status === Image.Ready
+                            }
+
                             MaterialSymbol {
                                 anchors.centerIn: parent
-                                text: "music_note"
-                                iconSize: 22
+                                visible: !liveNotifImg.visible
+                                text: "notifications"
+                                fill: 1
+                                iconSize: 18
                                 color: root.accentColor
                             }
                         }
 
-                        Image {
-                            id: expArtImg
-                            anchors.fill: parent
-                            source: root.activePlayer?.trackArtUrl ?? ""
-                            fillMode: Image.PreserveAspectCrop
-                            visible: false
-                            asynchronous: true
-                            cache: true
+                        // App Name + Summary + Body
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 1
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 6
+
+                                StyledText {
+                                    Layout.fillWidth: true
+                                    text: (liveNotifWrap.topNotif?.appName || Translation.tr("Notification"))
+                                    font.pixelSize: 11
+                                    font.weight: Font.Medium
+                                    color: root.fgMuted
+                                    elide: Text.ElideRight
+                                    maximumLineCount: 1
+                                }
+
+                                StyledText {
+                                    text: root.formatNotifAge(liveNotifWrap.topNotif?.time)
+                                    font.pixelSize: 10
+                                    color: root.fgMuted
+                                }
+                            }
+
+                            StyledText {
+                                Layout.fillWidth: true
+                                text: String(liveNotifWrap.topNotif?.summary ?? "").replace(/\n/g, " ")
+                                font.pixelSize: 12
+                                font.weight: Font.DemiBold
+                                color: root.fgColor
+                                elide: Text.ElideRight
+                                maximumLineCount: 1
+                            }
+
+                            StyledText {
+                                visible: text.length > 0
+                                Layout.fillWidth: true
+                                text: String(liveNotifWrap.topNotif?.body ?? "").replace(/\n/g, " ")
+                                font.pixelSize: 11
+                                color: root.fgMuted
+                                elide: Text.ElideRight
+                                maximumLineCount: 1
+                            }
                         }
 
+                        // Dismiss Button
                         Rectangle {
-                            id: expArtMask
-                            anchors.fill: parent
+                            Layout.alignment: Qt.AlignTop
+                            Layout.preferredWidth: 20
+                            Layout.preferredHeight: 20
                             radius: 10
-                            visible: false
-                        }
+                            color: liveDismissMouse.containsMouse
+                                ? ColorUtils.applyAlpha(root.fgColor, 0.14)
+                                : "transparent"
 
-                        OpacityMask {
-                            anchors.fill: parent
-                            source: expArtImg
-                            maskSource: expArtMask
-                            visible: expArtImg.status === Image.Ready
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                text: "close"
+                                iconSize: 13
+                                color: root.fgMuted
+                            }
+
+                            MouseArea {
+                                id: liveDismissMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    if (liveNotifWrap.topNotif) {
+                                        Notifications.timeoutNotification(liveNotifWrap.topNotif.notificationId);
+                                    }
+                                }
+                            }
                         }
                     }
+                }
 
-                    // Track Title + Artist
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 2
+                // Stacked Depth Pill when multiple notifications from any apps are queued together
+                Rectangle {
+                    visible: liveNotifWrap.extraCount > 0
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: parent.width - 20
+                    Layout.preferredHeight: 22
+                    radius: 10
+                    color: ColorUtils.applyAlpha(root.innerCardBg, 0.72)
+                    border.width: 1
+                    border.color: ColorUtils.applyAlpha(root.innerCardBorder, 0.7)
+
+                    RowLayout {
+                        anchors {
+                            fill: parent
+                            leftMargin: 10
+                            rightMargin: 10
+                        }
+                        spacing: 6
+
+                        MaterialSymbol {
+                            text: "layers"
+                            iconSize: 12
+                            color: root.accentColor
+                        }
 
                         StyledText {
                             Layout.fillWidth: true
-                            text: root.activePlayer
-                                ? (StringUtils.cleanMusicTitle(root.activePlayer.trackTitle) || Translation.tr("Now Playing"))
-                                : ""
+                            text: liveNotifWrap.extraCount === 1
+                                ? Translation.tr("+1 more notification stacked")
+                                : Translation.tr("+%1 more notifications stacked").arg(liveNotifWrap.extraCount)
+                            font.pixelSize: 10
+                            font.weight: Font.Medium
+                            color: root.fgMuted
+                            elide: Text.ElideRight
+                        }
+
+                        StyledText {
+                            text: Translation.tr("Hover to view")
+                            font.pixelSize: 10
+                            font.weight: Font.DemiBold
+                            color: root.accentColor
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- EXPANDED COLOROS 15 FLUID CLOUD STACKED CARDS ---
+        ColumnLayout {
+            id: centerExpandedCol
+            anchors {
+                top: parent.top
+                topMargin: root.diFluidStack ? 0 : 10
+                horizontalCenter: parent.horizontalCenter
+            }
+            width: root.diFluidStack ? centerIsland.expandedW : (centerIsland.expandedW - 20)
+            spacing: root.diFluidStack ? root.diCardSpacing : 8
+            opacity: centerIsland.expanded ? 1 : 0
+            visible: opacity > 0.02
+
+            Behavior on opacity {
+                NumberAnimation { duration: Math.round(130 * root.diAnimSpeed); easing.type: Easing.OutCubic }
+            }
+
+            // =================================================================
+            // CARD 1: ColorOS 15 Live Screen Recording Card
+            // =================================================================
+            FluidCloudCard {
+                visible: root.isRecording && root.diShowRecCard
+                revealed: centerIsland.expanded
+                stackOrder: 0
+                cardHeight: 92
+                accentBorder: ColorUtils.applyAlpha("#FF3B30", 0.42)
+
+                ColumnLayout {
+                    anchors {
+                        fill: parent
+                        leftMargin: 16
+                        rightMargin: 16
+                        topMargin: 12
+                        bottomMargin: 12
+                    }
+                    spacing: 10
+
+                    // Top row: Pulsing red dot + "Recording..." | Live timer 00:00
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 7
+
+                        Rectangle {
+                            Layout.alignment: Qt.AlignVCenter
+                            width: 8
+                            height: 8
+                            radius: 4
+                            color: "#FF3B30"
+
+                            SequentialAnimation on opacity {
+                                running: root.isRecording && centerIsland.expanded
+                                loops: Animation.Infinite
+                                NumberAnimation { to: 0.28; duration: 620; easing.type: Easing.InOutSine }
+                                NumberAnimation { to: 1.0; duration: 620; easing.type: Easing.InOutSine }
+                            }
+                        }
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: Translation.tr("Recording...")
                             font.pixelSize: 13
                             font.weight: Font.DemiBold
                             color: root.fgColor
                             elide: Text.ElideRight
-                            maximumLineCount: 1
                         }
 
                         StyledText {
-                            Layout.fillWidth: true
-                            text: root.activePlayer
-                                ? (root.activePlayer.trackArtist || root.activePlayer.identity || "")
-                                : ""
-                            font.pixelSize: 11
-                            color: root.fgMuted
-                            elide: Text.ElideRight
-                            maximumLineCount: 1
+                            text: root.formatRecordingTime(root.recordingElapsedSeconds)
+                            font.pixelSize: 13
+                            font.weight: Font.DemiBold
+                            font.features: ({ "tnum": 1 })
+                            color: root.fgColor
                         }
                     }
 
-                    // Transport Controls (Prev / Play-Pause / Next)
-                    Row {
-                        spacing: 3
-
-                        IslandMediaBtn {
-                            icon: "skip_previous"
-                            iconSz: 18
-                            onClicked: root.activePlayer?.previous()
-                        }
-
-                        IslandMediaBtn {
-                            icon: (root.activePlayer?.isPlaying ?? false) ? "pause" : "play_arrow"
-                            iconSz: 19
-                            filled: true
-                            primary: true
-                            onClicked: root.activePlayer?.togglePlaying()
-                        }
-
-                        IslandMediaBtn {
-                            icon: "skip_next"
-                            iconSz: 18
-                            onClicked: root.activePlayer?.next()
-                        }
-                    }
-                }
-            }
-
-            // 7-Day Calendar Week Strip
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 5
-
-                Repeater {
-                    model: 7
-                    delegate: Rectangle {
-                        required property int index
-
-                        readonly property var date: {
-                            const t = centerIsland.today;
-                            const d = new Date(t);
-                            d.setDate(t.getDate() - t.getDay() + index);
-                            return d;
-                        }
-                        readonly property bool isToday: {
-                            const t = centerIsland.today;
-                            return date.getDate() === t.getDate() &&
-                                   date.getMonth() === t.getMonth() &&
-                                   date.getFullYear() === t.getFullYear();
-                        }
-
+                    // Bottom row: ColorOS 15 Circular Controls (System Audio, Mic | Folder, Red Stop)
+                    RowLayout {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 52
-                        radius: 13
-                        color: isToday ? root.accentColor : root.innerCardBg
-                        border.width: 1
-                        border.color: isToday
-                            ? ColorUtils.applyAlpha(root.accentColor, 0.85)
-                            : root.innerCardBorder
+                        spacing: 10
 
-                        ColumnLayout {
-                            anchors.centerIn: parent
-                            spacing: 2
+                        // System Audio Toggle
+                        Rectangle {
+                            readonly property bool muted: Audio.sink?.audio?.muted ?? false
+                            Layout.preferredWidth: 36
+                            Layout.preferredHeight: 36
+                            radius: 18
+                            color: !muted
+                                ? (recAudioMouse.pressed ? Qt.rgba(1, 1, 1, 0.85) : "#FFFFFF")
+                                : (recAudioMouse.containsMouse ? ColorUtils.applyAlpha(root.fgColor, 0.22) : ColorUtils.applyAlpha(root.fgColor, 0.14))
 
-                            StyledText {
-                                Layout.alignment: Qt.AlignHCenter
-                                text: Qt.locale().toString(date, "ddd").slice(0, 2)
-                                font.pixelSize: 10
-                                font.weight: isToday ? Font.DemiBold : Font.Medium
-                                color: isToday
-                                    ? ColorUtils.applyAlpha(root.onAccentColor, 0.85)
-                                    : root.fgMuted
+                            Behavior on color { ColorAnimation { duration: 140 } }
+
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                text: parent.muted ? "volume_off" : "volume_up"
+                                fill: 1
+                                iconSize: 18
+                                color: !parent.muted ? "#18181B" : root.fgColor
                             }
 
-                            StyledText {
-                                Layout.alignment: Qt.AlignHCenter
-                                text: date.getDate()
-                                font.pixelSize: isToday ? 14 : 13
-                                font.weight: isToday ? Font.Bold : Font.Medium
-                                font.features: ({ "tnum": 1 })
-                                color: isToday ? root.onAccentColor : root.fgColor
+                            MouseArea {
+                                id: recAudioMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: Audio.toggleMute()
+                            }
+                        }
+
+                        // Microphone Toggle
+                        Rectangle {
+                            readonly property bool micMuted: Audio.source?.audio?.muted ?? false
+                            Layout.preferredWidth: 36
+                            Layout.preferredHeight: 36
+                            radius: 18
+                            color: !micMuted
+                                ? (recMicMouse.pressed ? Qt.rgba(1, 1, 1, 0.85) : "#FFFFFF")
+                                : (recMicMouse.containsMouse ? ColorUtils.applyAlpha(root.fgColor, 0.22) : ColorUtils.applyAlpha(root.fgColor, 0.14))
+
+                            Behavior on color { ColorAnimation { duration: 140 } }
+
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                text: parent.micMuted ? "mic_off" : "mic"
+                                fill: 1
+                                iconSize: 18
+                                color: !parent.micMuted ? "#18181B" : root.fgColor
+                            }
+
+                            MouseArea {
+                                id: recMicMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: Audio.toggleMicMute()
+                            }
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        // Open Recordings Folder
+                        Rectangle {
+                            Layout.preferredWidth: 36
+                            Layout.preferredHeight: 36
+                            radius: 18
+                            color: recFolderMouse.pressed
+                                ? ColorUtils.applyAlpha(root.fgColor, 0.26)
+                                : (recFolderMouse.containsMouse
+                                    ? ColorUtils.applyAlpha(root.fgColor, 0.20)
+                                    : ColorUtils.applyAlpha(root.fgColor, 0.14))
+
+                            Behavior on color { ColorAnimation { duration: 120 } }
+
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                text: "folder_open"
+                                iconSize: 18
+                                color: root.fgColor
+                            }
+
+                            MouseArea {
+                                id: recFolderMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: Qt.openUrlExternally(`file://${Config.options.screenRecord.savePath}`)
+                            }
+                        }
+
+                        // Vibrant Red Circular Stop Button (ColorOS 15 style)
+                        Rectangle {
+                            Layout.preferredWidth: 36
+                            Layout.preferredHeight: 36
+                            radius: 18
+                            color: expStopMouse.pressed
+                                ? "#D93025"
+                                : (expStopMouse.containsMouse ? "#FF5147" : "#FF3B30")
+                            scale: expStopMouse.pressed ? 0.92 : 1.0
+
+                            Behavior on color { ColorAnimation { duration: 110 } }
+                            Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
+
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: 12
+                                height: 12
+                                radius: 3
+                                color: "#FFFFFF"
+                            }
+
+                            MouseArea {
+                                id: expStopMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.stopRecording()
                             }
                         }
                     }
                 }
             }
 
-            // Tasks Card inside Dynamic Island
-            Rectangle {
-                Layout.fillWidth: true
-                implicitHeight: tasksInnerRow.implicitHeight + 14
-                radius: 14
-                color: root.innerCardBg
-                border.width: 1
-                border.color: root.innerCardBorder
+            // =================================================================
+            // CARD 2: ColorOS 15 Live Now Playing Music Card (with Scrubber)
+            // =================================================================
+            FluidCloudCard {
+                id: musicFluidCard
+                visible: root.showExpandedMusic && root.diShowMusicCard
+                revealed: centerIsland.expanded
+                stackOrder: (root.isRecording && root.diShowRecCard) ? 1 : 0
+                cardHeight: root.diShowMusicScrubber ? 140 : 114
 
-                RowLayout {
-                    id: tasksInnerRow
+                readonly property real trackPos: Math.max(0, Number(root.activePlayer?.position ?? 0))
+                readonly property real trackLen: Math.max(0, Number(root.activePlayer?.length ?? 0))
+                readonly property real trackProgress: trackLen > 0 ? Math.max(0, Math.min(1, trackPos / trackLen)) : 0
+
+                ColumnLayout {
                     anchors {
                         fill: parent
-                        margins: 7
+                        leftMargin: 16
+                        rightMargin: 16
+                        topMargin: 14
+                        bottomMargin: 12
                     }
                     spacing: 10
 
-                    Rectangle {
-                        Layout.preferredWidth: 32
-                        Layout.preferredHeight: 32
-                        radius: 10
-                        color: ColorUtils.applyAlpha(root.accentColor, root.dark ? 0.24 : 0.14)
+                    // Top Row: Album Art + Title/Artist + Mini Waveform
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 11
 
-                        MaterialSymbol {
-                            anchors.centerIn: parent
-                            text: "checklist"
-                            iconSize: 17
-                            color: root.accentColor
+                        Item {
+                            Layout.preferredWidth: 44
+                            Layout.preferredHeight: 44
+
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: 11
+                                color: ColorUtils.applyAlpha(root.accentColor, root.dark ? 0.24 : 0.14)
+                                MaterialSymbol {
+                                    anchors.centerIn: parent
+                                    text: "music_note"
+                                    iconSize: 22
+                                    color: root.accentColor
+                                }
+                            }
+
+                            Image {
+                                id: expArtImg
+                                anchors.fill: parent
+                                source: root.activePlayer?.trackArtUrl ?? ""
+                                fillMode: Image.PreserveAspectCrop
+                                visible: false
+                                asynchronous: true
+                                cache: true
+                            }
+
+                            Rectangle {
+                                id: expArtMask
+                                anchors.fill: parent
+                                radius: 11
+                                visible: false
+                            }
+
+                            OpacityMask {
+                                anchors.fill: parent
+                                source: expArtImg
+                                maskSource: expArtMask
+                                visible: expArtImg.status === Image.Ready
+                            }
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 2
+
+                            StyledText {
+                                Layout.fillWidth: true
+                                text: root.activePlayer
+                                    ? (StringUtils.cleanMusicTitle(root.activePlayer.trackTitle) || Translation.tr("Now Playing"))
+                                    : ""
+                                font.pixelSize: 13
+                                font.weight: Font.DemiBold
+                                color: root.fgColor
+                                elide: Text.ElideRight
+                                maximumLineCount: 1
+                            }
+
+                            StyledText {
+                                Layout.fillWidth: true
+                                text: root.activePlayer
+                                    ? (root.activePlayer.trackArtist || root.activePlayer.identity || "")
+                                    : ""
+                                font.pixelSize: 11
+                                color: root.fgMuted
+                                elide: Text.ElideRight
+                                maximumLineCount: 1
+                            }
+                        }
+
+                        // ColorOS 15 Top-Right Animated Mini Equalizer
+                        Row {
+                            visible: root.diShowMusicEqualizer
+                            Layout.alignment: Qt.AlignVCenter
+                            spacing: 2.5
+
+                            Repeater {
+                                model: [
+                                    { lo: 4, hi: 12, dur: 430 },
+                                    { lo: 6, hi: 16, dur: 310 },
+                                    { lo: 5, hi: 14, dur: 380 },
+                                    { lo: 4, hi: 10, dur: 470 }
+                                ]
+                                delegate: Rectangle {
+                                    required property var modelData
+                                    width: 2.5
+                                    height: (root.activePlayer?.isPlaying ?? false) ? modelData.lo : 4
+                                    radius: 1.25
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    color: root.accentColor
+
+                                    SequentialAnimation on height {
+                                        running: root.showExpandedMusic && centerIsland.expanded && (root.activePlayer?.isPlaying ?? false)
+                                        loops: Animation.Infinite
+                                        NumberAnimation { to: modelData.hi; duration: modelData.dur; easing.type: Easing.InOutSine }
+                                        NumberAnimation { to: modelData.lo; duration: modelData.dur; easing.type: Easing.InOutSine }
+                                    }
+                                }
+                            }
                         }
                     }
 
-                    ColumnLayout {
+                    // Middle Row: Interactive Live Scrubber (00:29 ───●────── 04:00)
+                    RowLayout {
+                        visible: root.diShowMusicScrubber
                         Layout.fillWidth: true
-                        spacing: 3
+                        spacing: 8
 
-                        Repeater {
-                            model: Math.min(2, Todo.list.filter(t => !t.done).length)
-                            delegate: StyledText {
-                                required property int index
-                                readonly property var filtered: Todo.list.filter(t => !t.done)
-                                readonly property var todo: filtered[filtered.length - 1 - index]
-                                Layout.fillWidth: true
-                                text: `•  ${todo.content}`
-                                font.pixelSize: 12
-                                color: root.fgColor
-                                elide: Text.ElideRight
+                        StyledText {
+                            text: root.formatMediaTime(musicFluidCard.trackPos)
+                            font.pixelSize: 10
+                            font.weight: Font.Medium
+                            font.features: ({ "tnum": 1 })
+                            color: root.fgMuted
+                        }
+
+                        Item {
+                            id: scrubberTrackWrap
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 16
+
+                            Rectangle {
+                                id: scrubberBg
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: parent.width
+                                height: 3.5
+                                radius: 2
+                                color: ColorUtils.applyAlpha(root.fgColor, 0.18)
+
+                                Rectangle {
+                                    anchors {
+                                        left: parent.left
+                                        top: parent.top
+                                        bottom: parent.bottom
+                                    }
+                                    width: parent.width * musicFluidCard.trackProgress
+                                    radius: 2
+                                    color: root.fgColor
+                                }
+                            }
+
+                            Rectangle {
+                                width: scrubberMouse.containsMouse ? 10 : 8
+                                height: width
+                                radius: width / 2
+                                anchors.verticalCenter: parent.verticalCenter
+                                x: Math.max(0, Math.min(parent.width - width, parent.width * musicFluidCard.trackProgress - width / 2))
+                                color: "#FFFFFF"
+                                Behavior on width { NumberAnimation { duration: 100 } }
+                            }
+
+                            MouseArea {
+                                id: scrubberMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                function seekAt(mx) {
+                                    if (!root.activePlayer || !(root.activePlayer.length > 0)) return;
+                                    const ratio = Math.max(0, Math.min(1, mx / Math.max(1, width)));
+                                    root.activePlayer.position = ratio * root.activePlayer.length;
+                                }
+                                onClicked: mouse => seekAt(mouse.x)
+                                onPositionChanged: mouse => { if (pressed) seekAt(mouse.x); }
                             }
                         }
 
                         StyledText {
-                            visible: Todo.list.filter(t => !t.done).length === 0
-                            text: Translation.tr("No pending tasks")
-                            font.pixelSize: 12
+                            text: root.formatMediaTime(musicFluidCard.trackLen)
+                            font.pixelSize: 10
+                            font.weight: Font.Medium
+                            font.features: ({ "tnum": 1 })
                             color: root.fgMuted
                         }
                     }
 
-                    StyledText {
-                        text: `${Todo.list.filter(t => !t.done).length}`
-                        font.pixelSize: 14
-                        font.weight: Font.Bold
-                        font.features: ({ "tnum": 1 })
-                        color: root.accentColor
-                        Layout.rightMargin: 4
+                    // Bottom Row: Centered ColorOS 15 Transport Controls + Audio Output Button
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 0
+
+                        Item { Layout.preferredWidth: 32; Layout.preferredHeight: 32 }
+                        Item { Layout.fillWidth: true }
+
+                        Row {
+                            spacing: 18
+
+                            IslandMediaBtn {
+                                anchors.verticalCenter: parent.verticalCenter
+                                icon: "skip_previous"
+                                iconSz: 22
+                                onClicked: root.activePlayer?.previous()
+                            }
+
+                            Rectangle {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 38
+                                height: 38
+                                radius: 19
+                                color: playPauseMouse.pressed
+                                    ? ColorUtils.applyAlpha(root.fgColor, 0.85)
+                                    : (root.dark ? "#FFFFFF" : root.accentColor)
+                                scale: playPauseMouse.pressed ? 0.92 : 1.0
+
+                                Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
+
+                                MaterialSymbol {
+                                    anchors.centerIn: parent
+                                    text: (root.activePlayer?.isPlaying ?? false) ? "pause" : "play_arrow"
+                                    fill: 1
+                                    iconSize: 22
+                                    color: root.dark ? "#18181B" : root.onAccentColor
+                                }
+
+                                MouseArea {
+                                    id: playPauseMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: root.activePlayer?.togglePlaying()
+                                }
+                            }
+
+                            IslandMediaBtn {
+                                anchors.verticalCenter: parent.verticalCenter
+                                icon: "skip_next"
+                                iconSz: 22
+                                onClicked: root.activePlayer?.next()
+                            }
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        IslandMediaBtn {
+                            icon: "podcasts"
+                            iconSz: 18
+                            onClicked: GlobalStates.sidebarRightOpen = !GlobalStates.sidebarRightOpen
+                        }
                     }
                 }
             }
 
-            // System Uptime Footer
-            RowLayout {
-                Layout.alignment: Qt.AlignHCenter
-                spacing: 6
+            // =================================================================
+            // CARD 3: ColorOS 15 Unified Stacked App Notifications Card
+            // =================================================================
+            FluidCloudCard {
+                visible: root.totalNotifCount > 0 && root.diStackNotifications
+                revealed: centerIsland.expanded
+                stackOrder: ((root.isRecording && root.diShowRecCard) ? 1 : 0) + ((root.showExpandedMusic && root.diShowMusicCard) ? 1 : 0)
+                cardHeight: notifStackCardCol.implicitHeight + 20
 
-                MaterialSymbol {
-                    text: "timelapse"
-                    iconSize: 13
-                    color: root.fgMuted
+                ColumnLayout {
+                    id: notifStackCardCol
+                    anchors {
+                        top: parent.top
+                        left: parent.left
+                        right: parent.right
+                        margins: 10
+                    }
+                    spacing: 6
+
+                    // Stack Header: Title + Total Count + Clear All
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: 4
+                        Layout.rightMargin: 2
+                        spacing: 6
+
+                        MaterialSymbol {
+                            text: "notifications"
+                            fill: 1
+                            iconSize: 14
+                            color: root.accentColor
+                        }
+
+                        StyledText {
+                            text: Translation.tr("Notifications")
+                            font.pixelSize: 12
+                            font.weight: Font.DemiBold
+                            color: root.fgColor
+                        }
+
+                        Rectangle {
+                            Layout.preferredWidth: stackCntLbl.implicitWidth + 10
+                            Layout.preferredHeight: 16
+                            radius: 8
+                            color: ColorUtils.applyAlpha(root.accentColor, root.dark ? 0.25 : 0.14)
+
+                            StyledText {
+                                id: stackCntLbl
+                                anchors.centerIn: parent
+                                text: `${root.totalNotifCount}`
+                                font.pixelSize: 10
+                                font.weight: Font.Bold
+                                font.features: ({ "tnum": 1 })
+                                color: root.accentColor
+                            }
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        Rectangle {
+                            Layout.preferredWidth: clearAllLbl.implicitWidth + 14
+                            Layout.preferredHeight: 20
+                            radius: 10
+                            color: clearAllMouse.containsMouse
+                                ? ColorUtils.applyAlpha(root.fgColor, 0.14)
+                                : ColorUtils.applyAlpha(root.fgColor, 0.07)
+
+                            StyledText {
+                                id: clearAllLbl
+                                anchors.centerIn: parent
+                                text: Translation.tr("Clear All")
+                                font.pixelSize: 10
+                                font.weight: Font.DemiBold
+                                color: root.fgMuted
+                            }
+
+                            MouseArea {
+                                id: clearAllMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    Notifications.discardAllNotifications();
+                                    Notifications.markAllRead();
+                                }
+                            }
+                        }
+                    }
+
+                    // Scrollable Unified Stack of Every App's Notifications
+                    Flickable {
+                        id: notifStackFlick
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Math.min(162, notifStackListCol.implicitHeight)
+                        clip: true
+                        contentWidth: width
+                        contentHeight: notifStackListCol.implicitHeight
+                        boundsBehavior: Flickable.StopAtBounds
+
+                        ColumnLayout {
+                            id: notifStackListCol
+                            width: notifStackFlick.width
+                            spacing: 5
+
+                            Repeater {
+                                model: root.allNotifsNewest
+
+                                delegate: Rectangle {
+                                    id: stackedNotifRow
+                                    required property var modelData
+                                    required property int index
+                                    readonly property string iconUrl: root.resolveNotifIcon(modelData)
+
+                                    Layout.fillWidth: true
+                                    implicitHeight: stackedNotifInner.implicitHeight + 12
+                                    radius: 12
+                                    color: stackedRowMouse.containsMouse
+                                        ? ColorUtils.applyAlpha(root.fgColor, root.dark ? 0.10 : 0.07)
+                                        : ColorUtils.applyAlpha(root.fgColor, root.dark ? 0.05 : 0.04)
+                                    border.width: 1
+                                    border.color: ColorUtils.applyAlpha(root.innerCardBorder, 0.55)
+
+                                    MouseArea {
+                                        id: stackedRowMouse
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        acceptedButtons: Qt.NoButton
+                                    }
+
+                                    RowLayout {
+                                        id: stackedNotifInner
+                                        anchors {
+                                            left: parent.left
+                                            right: parent.right
+                                            verticalCenter: parent.verticalCenter
+                                            leftMargin: 8
+                                            rightMargin: 6
+                                        }
+                                        spacing: 8
+
+                                        Rectangle {
+                                            Layout.alignment: Qt.AlignTop
+                                            Layout.topMargin: 2
+                                            Layout.preferredWidth: 26
+                                            Layout.preferredHeight: 26
+                                            radius: 7
+                                            color: ColorUtils.applyAlpha(root.accentColor, root.dark ? 0.22 : 0.14)
+
+                                            Image {
+                                                id: stackedImg
+                                                anchors.fill: parent
+                                                anchors.margins: 3
+                                                source: stackedNotifRow.iconUrl
+                                                fillMode: Image.PreserveAspectFit
+                                                asynchronous: true
+                                                visible: stackedNotifRow.iconUrl !== "" && status === Image.Ready
+                                            }
+
+                                            MaterialSymbol {
+                                                anchors.centerIn: parent
+                                                visible: !stackedImg.visible
+                                                text: "notifications"
+                                                fill: 1
+                                                iconSize: 14
+                                                color: root.accentColor
+                                            }
+                                        }
+
+                                        ColumnLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 1
+
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                spacing: 5
+
+                                                StyledText {
+                                                    Layout.fillWidth: true
+                                                    text: stackedNotifRow.modelData?.appName || Translation.tr("App")
+                                                    font.pixelSize: 10
+                                                    font.weight: Font.DemiBold
+                                                    color: root.accentColor
+                                                    elide: Text.ElideRight
+                                                    maximumLineCount: 1
+                                                }
+
+                                                StyledText {
+                                                    text: root.formatNotifAge(stackedNotifRow.modelData?.time)
+                                                    font.pixelSize: 10
+                                                    color: root.fgMuted
+                                                }
+                                            }
+
+                                            StyledText {
+                                                Layout.fillWidth: true
+                                                text: String(stackedNotifRow.modelData?.summary ?? "").replace(/\n/g, " ")
+                                                font.pixelSize: 11
+                                                font.weight: Font.DemiBold
+                                                color: root.fgColor
+                                                elide: Text.ElideRight
+                                                maximumLineCount: 1
+                                            }
+
+                                            StyledText {
+                                                visible: text.length > 0
+                                                Layout.fillWidth: true
+                                                text: String(stackedNotifRow.modelData?.body ?? "").replace(/\n/g, " ")
+                                                font.pixelSize: 10
+                                                color: root.fgMuted
+                                                elide: Text.ElideRight
+                                                maximumLineCount: 2
+                                                wrapMode: Text.Wrap
+                                            }
+
+                                            Row {
+                                                visible: (stackedNotifRow.modelData?.actions?.length ?? 0) > 0
+                                                Layout.topMargin: 3
+                                                spacing: 4
+
+                                                Repeater {
+                                                    model: stackedNotifRow.modelData?.actions ?? []
+                                                    delegate: Rectangle {
+                                                        id: actBtn
+                                                        required property var modelData
+                                                        width: actLbl.implicitWidth + 12
+                                                        height: 20
+                                                        radius: 6
+                                                        color: actMouse.containsMouse
+                                                            ? ColorUtils.applyAlpha(root.accentColor, 0.30)
+                                                            : ColorUtils.applyAlpha(root.accentColor, 0.16)
+
+                                                        StyledText {
+                                                            id: actLbl
+                                                            anchors.centerIn: parent
+                                                            text: actBtn.modelData.text ?? ""
+                                                            font.pixelSize: 10
+                                                            font.weight: Font.Medium
+                                                            color: root.fgColor
+                                                        }
+
+                                                        MouseArea {
+                                                            id: actMouse
+                                                            anchors.fill: parent
+                                                            hoverEnabled: true
+                                                            cursorShape: Qt.PointingHandCursor
+                                                            onClicked: Notifications.attemptInvokeAction(
+                                                                stackedNotifRow.modelData.notificationId,
+                                                                actBtn.modelData.identifier
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        Rectangle {
+                                            Layout.alignment: Qt.AlignTop
+                                            Layout.preferredWidth: 18
+                                            Layout.preferredHeight: 18
+                                            radius: 9
+                                            color: itemCloseMouse.containsMouse
+                                                ? ColorUtils.applyAlpha(root.fgColor, 0.14)
+                                                : "transparent"
+
+                                            MaterialSymbol {
+                                                anchors.centerIn: parent
+                                                text: "close"
+                                                iconSize: 12
+                                                color: root.fgMuted
+                                            }
+
+                                            MouseArea {
+                                                id: itemCloseMouse
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: Notifications.discardNotification(stackedNotifRow.modelData.notificationId)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
+            }
 
-                StyledText {
-                    text: `${Translation.tr("System Uptime")}  •  ${DateTime.uptime}`
-                    font.pixelSize: 11
-                    color: root.fgMuted
+            // =================================================================
+            // CARD 4: Calendar, Tasks & Uptime Card
+            // =================================================================
+            FluidCloudCard {
+                visible: root.diShowCalendarCard
+                revealed: centerIsland.expanded
+                stackOrder: ((root.isRecording && root.diShowRecCard) ? 1 : 0) + ((root.showExpandedMusic && root.diShowMusicCard) ? 1 : 0) + ((root.totalNotifCount > 0 && root.diStackNotifications) ? 1 : 0)
+                cardHeight: calTasksCol.implicitHeight + 26
+
+                ColumnLayout {
+                    id: calTasksCol
+                    anchors {
+                        top: parent.top
+                        left: parent.left
+                        right: parent.right
+                        margins: 13
+                    }
+                    spacing: 10
+
+                    // Month Year + Live Time & Day Pill
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Row {
+                            spacing: 6
+                            StyledText {
+                                text: Qt.locale().toString(centerIsland.today, "MMMM")
+                                font.pixelSize: 17
+                                font.weight: Font.Bold
+                                color: root.fgColor
+                            }
+                            StyledText {
+                                text: Qt.locale().toString(centerIsland.today, "yyyy")
+                                font.pixelSize: 17
+                                color: root.fgMuted
+                            }
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        StyledText {
+                            text: DateTime.time
+                            font.pixelSize: 12
+                            font.weight: Font.DemiBold
+                            font.features: ({ "tnum": 1 })
+                            color: root.fgColor
+                        }
+
+                        Rectangle {
+                            Layout.preferredWidth: expDayLabel.implicitWidth + 14
+                            Layout.preferredHeight: 22
+                            radius: 11
+                            color: ColorUtils.applyAlpha(root.accentColor, root.dark ? 0.24 : 0.14)
+                            border.width: 1
+                            border.color: ColorUtils.applyAlpha(root.accentColor, 0.32)
+
+                            StyledText {
+                                id: expDayLabel
+                                anchors.centerIn: parent
+                                text: Qt.locale().toString(centerIsland.today, "dddd")
+                                font.pixelSize: 11
+                                font.weight: Font.DemiBold
+                                color: root.accentColor
+                            }
+                        }
+                    }
+
+                    // 7-Day Calendar Week Strip
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 5
+
+                        Repeater {
+                            model: 7
+                            delegate: Rectangle {
+                                required property int index
+
+                                readonly property var date: {
+                                    const t = centerIsland.today;
+                                    const d = new Date(t);
+                                    d.setDate(t.getDate() - t.getDay() + index);
+                                    return d;
+                                }
+                                readonly property bool isToday: {
+                                    const t = centerIsland.today;
+                                    return date.getDate() === t.getDate() &&
+                                           date.getMonth() === t.getMonth() &&
+                                           date.getFullYear() === t.getFullYear();
+                                }
+
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 48
+                                radius: 13
+                                color: isToday ? root.accentColor : root.innerCardBg
+                                border.width: 1
+                                border.color: isToday
+                                    ? ColorUtils.applyAlpha(root.accentColor, 0.85)
+                                    : root.innerCardBorder
+
+                                ColumnLayout {
+                                    anchors.centerIn: parent
+                                    spacing: 1
+
+                                    StyledText {
+                                        Layout.alignment: Qt.AlignHCenter
+                                        text: Qt.locale().toString(date, "ddd").slice(0, 2)
+                                        font.pixelSize: 10
+                                        font.weight: isToday ? Font.DemiBold : Font.Medium
+                                        color: isToday
+                                            ? ColorUtils.applyAlpha(root.onAccentColor, 0.85)
+                                            : root.fgMuted
+                                    }
+
+                                    StyledText {
+                                        Layout.alignment: Qt.AlignHCenter
+                                        text: date.getDate()
+                                        font.pixelSize: isToday ? 14 : 13
+                                        font.weight: isToday ? Font.Bold : Font.Medium
+                                        font.features: ({ "tnum": 1 })
+                                        color: isToday ? root.onAccentColor : root.fgColor
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Tasks Card
+                    Rectangle {
+                        visible: root.diShowTasksInCal
+                        Layout.fillWidth: true
+                        implicitHeight: tasksInnerRow.implicitHeight + 12
+                        radius: 13
+                        color: root.innerCardBg
+                        border.width: 1
+                        border.color: root.innerCardBorder
+
+                        RowLayout {
+                            id: tasksInnerRow
+                            anchors {
+                                fill: parent
+                                margins: 6
+                            }
+                            spacing: 10
+
+                            Rectangle {
+                                Layout.preferredWidth: 30
+                                Layout.preferredHeight: 30
+                                radius: 9
+                                color: ColorUtils.applyAlpha(root.accentColor, root.dark ? 0.24 : 0.14)
+
+                                MaterialSymbol {
+                                    anchors.centerIn: parent
+                                    text: "checklist"
+                                    iconSize: 16
+                                    color: root.accentColor
+                                }
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+
+                                Repeater {
+                                    model: Math.min(2, Todo.list.filter(t => !t.done).length)
+                                    delegate: StyledText {
+                                        required property int index
+                                        readonly property var filtered: Todo.list.filter(t => !t.done)
+                                        readonly property var todo: filtered[filtered.length - 1 - index]
+                                        Layout.fillWidth: true
+                                        text: `•  ${todo.content}`
+                                        font.pixelSize: 12
+                                        color: root.fgColor
+                                        elide: Text.ElideRight
+                                    }
+                                }
+
+                                StyledText {
+                                    visible: Todo.list.filter(t => !t.done).length === 0
+                                    text: Translation.tr("No pending tasks")
+                                    font.pixelSize: 12
+                                    color: root.fgMuted
+                                }
+                            }
+
+                            StyledText {
+                                text: `${Todo.list.filter(t => !t.done).length}`
+                                font.pixelSize: 13
+                                font.weight: Font.Bold
+                                font.features: ({ "tnum": 1 })
+                                color: root.accentColor
+                                Layout.rightMargin: 4
+                            }
+                        }
+                    }
+
+                    // System Uptime Footer
+                    RowLayout {
+                        visible: root.diShowUptimeFooter
+                        Layout.alignment: Qt.AlignHCenter
+                        spacing: 6
+
+                        MaterialSymbol {
+                            text: "timelapse"
+                            iconSize: 12
+                            color: root.fgMuted
+                        }
+
+                        StyledText {
+                            text: `${Translation.tr("System Uptime")}  •  ${DateTime.uptime}`
+                            font.pixelSize: 11
+                            color: root.fgMuted
+                        }
+                    }
                 }
             }
         }
@@ -1063,10 +2109,10 @@ Item {
             }
 
             MenuBarItem {
-                visible: Config.options.bar.utilButtons.isRecording
+                visible: root.isRecording && !centerIsland.visible
                 horizontalPad: 5
-                tooltip: Translation.tr("Screen recording active")
-                onClicked: GlobalStates.sidebarRightOpen = !GlobalStates.sidebarRightOpen
+                tooltip: Translation.tr("Screen recording active • Click to stop")
+                onClicked: root.stopRecording()
 
                 Rectangle {
                     width: 8
@@ -1654,6 +2700,102 @@ Item {
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
             onClicked: mBtn.clicked()
+        }
+    }
+
+    // ============================================================
+    // COLOROS 15 FLUID CLOUD FLOATING STACK CARD (with Spring Cascade)
+    // ============================================================
+    component FluidCloudCard: Item {
+        id: fcRoot
+        default property alias content: fcContent.data
+        property bool revealed: false
+        property int stackOrder: 0
+        property real cardHeight: 80
+        property color accentBorder: root.islandBorder
+
+        Layout.fillWidth: true
+        Layout.preferredHeight: fcRoot.cardHeight
+        implicitHeight: fcRoot.cardHeight
+
+        readonly property int springDur: Math.round((240 + fcRoot.stackOrder * 55) * root.diAnimSpeed)
+
+        opacity: fcRoot.revealed ? 1.0 : 0.0
+        scale: fcRoot.revealed ? 1.0 : (root.diFluidStack ? 0.90 : 0.97)
+        transformOrigin: Item.Top
+
+        transform: Translate {
+            y: fcRoot.revealed ? 0 : (root.diFluidStack ? (-12 - fcRoot.stackOrder * 8) : -6)
+            Behavior on y {
+                NumberAnimation {
+                    duration: fcRoot.springDur
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: (fcRoot.revealed && root.diSpringBounce)
+                        ? [0.20, 1.24, 0.34, 1.0, 1, 1]
+                        : [0.38, 0.96, 0.28, 1.0, 1, 1]
+                }
+            }
+        }
+
+        Behavior on scale {
+            NumberAnimation {
+                duration: fcRoot.springDur
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: (fcRoot.revealed && root.diSpringBounce)
+                    ? [0.20, 1.22, 0.34, 1.0, 1, 1]
+                    : [0.38, 0.96, 0.28, 1.0, 1, 1]
+            }
+        }
+
+        Behavior on opacity {
+            NumberAnimation {
+                duration: Math.round((fcRoot.revealed ? (150 + fcRoot.stackOrder * 35) : 110) * root.diAnimSpeed)
+                easing.type: Easing.OutCubic
+            }
+        }
+
+        RectangularShadow {
+            visible: root.diFluidStack
+            anchors.fill: fcSurface
+            radius: fcSurface.radius
+            blur: 20
+            spread: 0
+            offset: Qt.vector2d(0, 6)
+            color: ColorUtils.applyAlpha(Appearance.m3colors.m3shadow, root.dark ? 0.26 : 0.15)
+            cached: false
+        }
+
+        Rectangle {
+            id: fcSurface
+            anchors.fill: parent
+            radius: root.diFluidStack ? root.diCardRadius : Math.max(12, root.diCardRadius - 6)
+            clip: true
+            color: root.diFluidStack ? root.islandBg : root.innerCardBg
+            border.width: root.showBorder ? 1 : 0
+            border.color: root.diFluidStack ? fcRoot.accentBorder : root.innerCardBorder
+
+            WindowGlass {
+                anchors.fill: parent
+                glassEnabled: root.glassOn && root.diFluidStack
+                cardRadius: parent.radius
+                tint: parent.color
+            }
+
+            Rectangle {
+                visible: root.diFluidStack
+                anchors.fill: parent
+                anchors.margins: 1
+                radius: Math.max(0, parent.radius - 1)
+                color: "transparent"
+                border.width: 1
+                border.color: root.innerRimColor
+                z: 20
+            }
+
+            Item {
+                id: fcContent
+                anchors.fill: parent
+            }
         }
     }
 

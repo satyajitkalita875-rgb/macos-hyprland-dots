@@ -131,10 +131,13 @@ Button {
 
         color: root.paintedColor
 
-        WindowGlass {
+        Loader {
             anchors.fill: parent
-            glassEnabled: root.glassActive
-            cardRadius: Math.min(root.leftRadius, root.rightRadius)
+            active: root.glassActive
+            sourceComponent: WindowGlass {
+                glassEnabled: true
+                cardRadius: Math.min(root.leftRadius, root.rightRadius)
+            }
         }
 
         Behavior on color {

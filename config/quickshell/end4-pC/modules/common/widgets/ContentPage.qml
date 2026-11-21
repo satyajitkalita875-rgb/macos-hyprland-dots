@@ -11,7 +11,8 @@ Item {
 
     property real baseWidth: 600
     property bool forceWidth: false
-    property real bottomContentPadding: Config.options.settings.style === "minimal" ? 40 : 90
+    readonly property bool isMacos: Config.options.settings.style === "macos"
+    property real bottomContentPadding: Config.options.settings.style === "minimal" ? 40 : (isMacos ? 48 : 90)
 
     // Children placed in ContentPage appear inside the ColumnLayout
     default property alias data: contentColumn.data
@@ -29,13 +30,15 @@ Item {
 
         ColumnLayout {
             id: contentColumn
-            width: root.forceWidth ? root.baseWidth : Math.max(root.baseWidth, implicitWidth)
+            width: root.isMacos
+                ? Math.max(360, Math.min(flickable.width - 44, root.baseWidth))
+                : (root.forceWidth ? root.baseWidth : Math.max(root.baseWidth, implicitWidth))
             anchors {
                 top: parent.top
                 horizontalCenter: parent.horizontalCenter
-                margins: 20
+                margins: root.isMacos ? 18 : 20
             }
-            spacing: 30
+            spacing: root.isMacos ? 20 : 30
         }
 
         ClippingRectangle {

@@ -13,7 +13,8 @@ Scope {
 
     PanelWindow {
         id: root
-        visible: (Notifications.popupList.length > 0) && !GlobalStates.screenLocked && !GlobalStates.dynamicIslandEnabled
+        readonly property bool handledByMacIsland: Config.options.bar.cornerStyle === 7 && GlobalStates.barOpen && (Config.options.bar.dynamicIsland.stackNotifications ?? true)
+        visible: (Notifications.popupList.length > 0) && !GlobalStates.screenLocked && !GlobalStates.dynamicIslandEnabled && !handledByMacIsland
         screen: Quickshell.screens.find(s => s.name === Hyprland.focusedMonitor?.name) ?? null
 
         property string position: {

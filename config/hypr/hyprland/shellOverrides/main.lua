@@ -1,6 +1,6 @@
 hl.config({ decoration = { rounding = 22 } })
 hl.config({ decoration = { blur = { enabled = true } } })
-hl.config({ decoration = { blur = { size = 7 } } })
+hl.config({ decoration = { blur = { size = 18 } } })
 hl.config({ decoration = { blur = { passes = 3 } } })
 hl.config({ decoration = { active_opacity = 1 } })
 hl.config({ decoration = { inactive_opacity = 0.9 } })

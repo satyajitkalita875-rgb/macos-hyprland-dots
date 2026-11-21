@@ -181,7 +181,8 @@ Singleton {
         "interface:Transparency/Content": root.optionSlider("appearance.transparency.contentTransparency", 0, 1, [0.57]),
         "interface:Settings Panel/Style": root.optionSelect("settings.style", [
             { displayName: Translation.tr("Default"), icon: "settings_panorama", value: "default" },
-            { displayName: Translation.tr("Minimal"), icon: "settings_heart", value: "minimal" }
+            { displayName: Translation.tr("Minimal"), icon: "settings_heart", value: "minimal" },
+            { displayName: Translation.tr("macOS"), icon: "laptop_mac", value: "macos" }
         ]),
         "interface:Border width": root.optionSpin("settings.borderSize", 0, 10, 1),
         "interface:Left Sidebar/Enable": root.optionSwitch("sidebar.media.enable"),

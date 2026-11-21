@@ -1,10 +1,9 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import Qt5Compat.GraphicalEffects
 import Quickshell
 import Quickshell.Io
-import Qt.labs.folderlistmodel
+import Quickshell.Widgets
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -14,32 +13,35 @@ import qs.modules.common.models
 ContentPage {
     id: page
     property bool isMinimal: Config.options.settings.style === "minimal"
+    readonly property bool isMacos: Config.options.settings.style === "macos"
     property string openPopup: ""
     forceWidth: true
-    baseWidth: !isMinimal ? 700 : 600
-    bottomContentPadding: 35
+    baseWidth: isMacos ? 640 : (!isMinimal ? 700 : 600)
+    bottomContentPadding: 28
 
     component SmallLightDarkPreferenceButton: RippleButton {
         id: smallLightDarkPreferenceButton
         required property bool dark
-        property color colText: toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer2
+        property color colText: toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer0
         padding: 0
         Layout.fillHeight: true
-        Layout.preferredWidth: 46
+        Layout.preferredWidth: 42
         toggled: Appearance.m3colors.darkmode === dark
-        colBackground: toggled ? Appearance.colors.colPrimary : ColorUtils.transparentize(Appearance.colors.colLayer2, 0.45)
+        colBackground: toggled
+            ? Appearance.colors.colPrimary
+            : ColorUtils.applyAlpha(Appearance.colors.colLayer1, 0.65)
         onClicked: {
             Quickshell.execDetached(["bash", "-c", `${Directories.wallpaperSwitchScriptPath} --mode ${dark ? "dark" : "light"} --noswitch`]);
         }
         contentItem: RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 12
-            anchors.rightMargin: 12
-            spacing: 7
+            anchors.leftMargin: 10
+            anchors.rightMargin: 10
+            spacing: 6
 
             MaterialSymbol {
                 Layout.alignment: Qt.AlignVCenter
-                iconSize: 24
+                iconSize: 20
                 fill: toggled ? 1 : 0
                 text: smallLightDarkPreferenceButton.dark ? "dark_mode" : "light_mode"
                 color: smallLightDarkPreferenceButton.colText
@@ -47,46 +49,23 @@ ContentPage {
         }
     }
 
-    component GlassCard: Item {
+    // Lightweight translucent surface (zero FastBlur / ShaderEffectSource FBO overhead)
+    component GlassCard: Rectangle {
         id: glass
-        required property Item backdrop
-        property real cardRadius: Appearance.rounding.large
+        property Item backdrop: null
+        property real cardRadius: page.isMacos ? 14 : Appearance.rounding.large
         default property alias content: contentHolder.data
 
-        Item {
-            anchors.fill: parent
-            layer.enabled: true
-            layer.effect: OpacityMask {
-                maskSource: Rectangle {
-                    width: glass.width
-                    height: glass.height
-                    radius: glass.cardRadius
-                }
-            }
-
-            ShaderEffectSource {
-                id: blurSource
-                anchors.fill: parent
-                sourceItem: glass.backdrop
-                sourceRect: Qt.rect(glass.x, glass.y, glass.width, glass.height)
-                visible: false
-            }
-            FastBlur {
-                anchors.fill: parent
-                source: blurSource
-                radius: 128
-            }
-            Rectangle {
-                anchors.fill: parent
-                color: ColorUtils.transparentize(Appearance.colors.colLayer1, 0.4)
-            }
-        }
-
-        Rectangle {
-            anchors.fill: parent
-            radius: glass.cardRadius
-            color: "transparent"
-        }
+        radius: cardRadius
+        color: ColorUtils.applyAlpha(
+            Appearance.m3colors.darkmode ? "#1C1C1E" : "#F5F5F7",
+            Appearance.m3colors.darkmode ? 0.78 : 0.84
+        )
+        border.width: 1
+        border.color: ColorUtils.applyAlpha(
+            Appearance.m3colors.darkmode ? "#FFFFFF" : "#000000",
+            Appearance.m3colors.darkmode ? 0.14 : 0.10
+        )
 
         Item {
             id: contentHolder
@@ -94,64 +73,24 @@ ContentPage {
         }
     }
 
-    component GlassPopup: Item {
+    component GlassPopup: Rectangle {
         id: glassPopup
-        required property Item backdrop
-        property real cardRadius: Appearance.rounding.normal
+        property Item backdrop: null
+        property real cardRadius: 12
         default property alias content: contentHolder.data
 
-        function syncBackdropRect() {
-            if (!backdrop)
-                return
-            const p = glassPopup.mapToItem(backdrop, 0, 0)
-            const x = Math.max(0, Math.min(p.x, backdrop.width - glassPopup.width))
-            const y = Math.max(0, Math.min(p.y, backdrop.height - glassPopup.height))
-            const w = Math.min(glassPopup.width, backdrop.width)
-            const h = Math.min(glassPopup.height, backdrop.height)
-            popupBlurSource.sourceRect = Qt.rect(x, y, w, h)
-        }
-        onWidthChanged: syncBackdropRect()
-        onHeightChanged: syncBackdropRect()
-        onXChanged: syncBackdropRect()
-        onYChanged: syncBackdropRect()
-        onBackdropChanged: syncBackdropRect()
-        Component.onCompleted: syncBackdropRect()
+        function syncBackdropRect() {}
 
-        Connections {
-            target: glassPopup.backdrop
-            function onWidthChanged() { glassPopup.syncBackdropRect() }
-            function onHeightChanged() { glassPopup.syncBackdropRect() }
-            function onXChanged() { glassPopup.syncBackdropRect() }
-            function onYChanged() { glassPopup.syncBackdropRect() }
-        }
-
-        Item {
-            anchors.fill: parent
-            layer.enabled: true
-            layer.effect: OpacityMask {
-                maskSource: Rectangle {
-                    width: glassPopup.width
-                    height: glassPopup.height
-                    radius: glassPopup.cardRadius
-                }
-            }
-
-            ShaderEffectSource {
-                id: popupBlurSource
-                anchors.fill: parent
-                sourceItem: glassPopup.backdrop
-                visible: false
-            }
-            FastBlur {
-                anchors.fill: parent
-                source: popupBlurSource
-                radius: 64
-            }
-            Rectangle {
-                anchors.fill: parent
-                color: ColorUtils.transparentize(Appearance.colors.colLayer1, 0.25)
-            }
-        }
+        radius: cardRadius
+        color: ColorUtils.applyAlpha(
+            Appearance.m3colors.darkmode ? "#242426" : "#FFFFFF",
+            Appearance.m3colors.darkmode ? 0.94 : 0.96
+        )
+        border.width: 1
+        border.color: ColorUtils.applyAlpha(
+            Appearance.m3colors.darkmode ? "#FFFFFF" : "#000000",
+            Appearance.m3colors.darkmode ? 0.14 : 0.12
+        )
 
         Item {
             id: contentHolder
@@ -164,7 +103,7 @@ ContentPage {
         property string iconText
         property string popupId
         property var popupHost: null
-        property int maxVisibleRows: 9
+        property int maxVisibleRows: 8
         property Item backdrop
         property string popupTitle
         property real popupXOffset: 0
@@ -173,11 +112,6 @@ ContentPage {
         property var pickValue: value => {}
         readonly property bool popupVisible: popupHost !== null && popupHost.openPopup === popupId
         readonly property bool hoveredAnywhere: buttonHoverHandler.hovered || popupHoverHandler.hovered
-
-        onPopupVisibleChanged: {
-            if (popupVisible)
-                popupGlass.syncBackdropRect();
-        }
 
         onHoveredAnywhereChanged: {
             if (hoveredAnywhere) {
@@ -191,9 +125,9 @@ ContentPage {
 
         padding: 0
         Layout.fillHeight: true
-        Layout.preferredWidth: 48
+        Layout.preferredWidth: 42
 
-        colBackground: ColorUtils.transparentize(Appearance.colors.colOnLayer1, 0.9)
+        colBackground: ColorUtils.applyAlpha(Appearance.colors.colOnLayer0, 0.08)
 
         contentItem: Item {
             anchors.fill: parent
@@ -201,8 +135,8 @@ ContentPage {
             MaterialSymbol {
                 anchors.centerIn: parent
                 text: barScreenPopupButton.iconText
-                iconSize: 22
-                color: Appearance.colors.colOnLayer1
+                iconSize: 20
+                color: Appearance.colors.colOnLayer0
             }
         }
 
@@ -212,7 +146,7 @@ ContentPage {
 
         Timer {
             id: popupCloseTimer
-            interval: 200
+            interval: 180
             onTriggered: {
                 if (!barScreenPopupButton.hoveredAnywhere && barScreenPopupButton.popupHost !== null && barScreenPopupButton.popupHost.openPopup === barScreenPopupButton.popupId)
                     barScreenPopupButton.popupHost.openPopup = "";
@@ -223,23 +157,15 @@ ContentPage {
             id: sectionPopup
             x: (barScreenPopupButton.width - width) / 2 + barScreenPopupButton.popupXOffset
             y: -height - 8
-            width: 248
+            width: 232
             height: popupColumn.implicitHeight + 12
             opacity: barScreenPopupButton.popupVisible ? 1 : 0
             visible: opacity > 0.01
             enabled: barScreenPopupButton.popupVisible
-            scale: barScreenPopupButton.popupVisible ? 1 : 0.92
-            transformOrigin: Item.Bottom
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: 130
-                    easing.type: Easing.OutCubic
-                }
-            }
-            Behavior on scale {
-                NumberAnimation {
-                    duration: 130
+                    duration: 110
                     easing.type: Easing.OutCubic
                 }
             }
@@ -253,12 +179,6 @@ ContentPage {
                 anchors.fill: parent
                 backdrop: barScreenPopupButton.backdrop
 
-                Rectangle {
-                    anchors.fill: parent
-                    radius: Appearance.rounding.normal
-                    color: "transparent"
-                }
-
                 ColumnLayout {
                     id: popupColumn
                     anchors.fill: parent
@@ -271,14 +191,15 @@ ContentPage {
                         Layout.topMargin: 2
                         Layout.bottomMargin: 2
                         text: barScreenPopupButton.popupTitle
-                        font.pixelSize: Appearance.font.pixelSize.smaller
-                        color: ColorUtils.transparentize(Appearance.colors.colOnLayer1, 0.45)
+                        font.pixelSize: 11
+                        font.weight: Font.DemiBold
+                        color: Appearance.colors.colSubtext
                     }
 
                     Flickable {
                         id: optionsFlick
                         Layout.fillWidth: true
-                        Layout.preferredHeight: Math.min(optionsColumn.implicitHeight, barScreenPopupButton.maxVisibleRows * 30 + (barScreenPopupButton.maxVisibleRows - 1) * 2)
+                        Layout.preferredHeight: Math.min(optionsColumn.implicitHeight, barScreenPopupButton.maxVisibleRows * 28 + (barScreenPopupButton.maxVisibleRows - 1) * 2)
                         contentWidth: width
                         contentHeight: optionsColumn.implicitHeight
                         clip: true
@@ -286,7 +207,6 @@ ContentPage {
                         boundsBehavior: Flickable.StopAtBounds
 
                         TouchpadScrollArea { flickable: optionsFlick }
-
                         ScrollBar.vertical: StyledScrollBar {}
 
                         ColumnLayout {
@@ -294,65 +214,65 @@ ContentPage {
                             width: optionsFlick.width
                             spacing: 2
 
-                        Repeater {
-                            model: barScreenPopupButton.options
+                            Repeater {
+                                model: barScreenPopupButton.options
 
-                            delegate: Rectangle {
-                                id: popupOptionRow
-                                required property var modelData
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 30
-                                radius: Appearance.rounding.normal
+                                delegate: Rectangle {
+                                    id: popupOptionRow
+                                    required property var modelData
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 28
+                                    radius: 8
 
-                                property bool isSelected: barScreenPopupButton.isCurrentValue(modelData.value)
-                                readonly property bool rowHovered: optionMouseArea.containsMouse
+                                    property bool isSelected: barScreenPopupButton.isCurrentValue(modelData.value)
+                                    readonly property bool rowHovered: optionMouseArea.containsMouse
 
-                                color: isSelected ? Appearance.colors.colPrimary
-                                    : rowHovered ? ColorUtils.transparentize(Appearance.colors.colOnLayer1, 0.9)
-                                    : "transparent"
+                                    color: isSelected ? Appearance.colors.colPrimary
+                                        : rowHovered ? ColorUtils.applyAlpha(Appearance.colors.colOnLayer0, 0.08)
+                                        : "transparent"
 
-                                MouseArea {
-                                    id: optionMouseArea
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        barScreenPopupButton.pickValue(popupOptionRow.modelData.value);
-                                        if (barScreenPopupButton.popupHost !== null)
-                                            barScreenPopupButton.popupHost.openPopup = "";
-                                    }
-                                }
-
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 10
-                                    anchors.rightMargin: 10
-                                    spacing: 8
-
-                                    MaterialSymbol {
-                                        text: popupOptionRow.modelData.icon
-                                        iconSize: Appearance.font.pixelSize.larger
-                                        color: popupOptionRow.isSelected ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer1
+                                    MouseArea {
+                                        id: optionMouseArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            barScreenPopupButton.pickValue(popupOptionRow.modelData.value);
+                                            if (barScreenPopupButton.popupHost !== null)
+                                                barScreenPopupButton.popupHost.openPopup = "";
+                                        }
                                     }
 
-                                    StyledText {
-                                        Layout.fillWidth: true
-                                        text: popupOptionRow.modelData.displayName
-                                        font.pixelSize: Appearance.font.pixelSize.small
-                                        font.weight: Font.Medium
-                                        elide: Text.ElideRight
-                                        color: popupOptionRow.isSelected ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer1
-                                    }
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 9
+                                        anchors.rightMargin: 9
+                                        spacing: 8
 
-                                    MaterialSymbol {
-                                        visible: popupOptionRow.isSelected
-                                        text: "check"
-                                        iconSize: Appearance.font.pixelSize.larger
-                                        color: Appearance.colors.colOnPrimary
+                                        MaterialSymbol {
+                                            text: popupOptionRow.modelData.icon
+                                            iconSize: 16
+                                            color: popupOptionRow.isSelected ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer0
+                                        }
+
+                                        StyledText {
+                                            Layout.fillWidth: true
+                                            text: popupOptionRow.modelData.displayName
+                                            font.pixelSize: 12
+                                            font.weight: Font.Medium
+                                            elide: Text.ElideRight
+                                            color: popupOptionRow.isSelected ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer0
+                                        }
+
+                                        MaterialSymbol {
+                                            visible: popupOptionRow.isSelected
+                                            text: "check"
+                                            iconSize: 15
+                                            color: Appearance.colors.colOnPrimary
+                                        }
                                     }
                                 }
                             }
-                        }
                         }
                     }
                 }
@@ -364,38 +284,100 @@ ContentPage {
         id: mainLayout
         Layout.fillWidth: true
         Layout.fillHeight: true
-        spacing: 6
+        spacing: page.isMacos ? 14 : 10
 
         ContentSection {
             icon: "screenshot_monitor"
-            title: Translation.tr("Wallpaper & Colors")
+            title: Translation.tr("Wallpaper & Appearance")
             shape: MaterialShape.Shape.Puffy
             Layout.fillWidth: true
             collapsible: false
 
-            Rectangle {
+            Item {
                 id: mBox
                 Layout.fillWidth: true
-                Layout.preferredHeight: isMinimal ? 400 : 556
-                radius: Appearance.rounding.large - 3
-                color: Appearance.colors.colLayer2
-                clip: true
+                Layout.preferredHeight: page.isMacos ? 250 : (isMinimal ? 320 : 420)
+                readonly property real cardRadius: page.isMacos ? 14 : (Appearance.rounding.large - 3)
 
-                StyledImage {
-                    id: wallpaperImg
+                ClippingRectangle {
                     anchors.fill: parent
-                    sourceSize.height: 1080
-                    fillMode: Image.PreserveAspectCrop
-                    source: /\.(mp4|webm|mkv|avi|mov)$/i.test(Config.options.background.wallpaperPath)
-                        ? Config.options.background.thumbnailPath
-                        : Config.options.background.wallpaperPath
-                    cache: false
-                    layer.enabled: true
-                    layer.effect: OpacityMask {
-                        maskSource: Rectangle {
-                            width: mBox.width
-                            height: mBox.height
-                            radius: mBox.radius
+                    radius: mBox.cardRadius
+                    color: Appearance.colors.colLayer2
+
+                    Image {
+                        id: wallpaperImg
+                        anchors.fill: parent
+                        asynchronous: true
+                        cache: true
+                        smooth: true
+                        sourceSize.width: 960
+                        sourceSize.height: 540
+                        fillMode: Image.PreserveAspectCrop
+                        source: {
+                            const raw = /\.(mp4|webm|mkv|avi|mov)$/i.test(Config.options.background.wallpaperPath)
+                                ? Config.options.background.thumbnailPath
+                                : Config.options.background.wallpaperPath;
+                            if (!raw) return "";
+                            return raw.startsWith("file:") ? raw : ("file://" + raw);
+                        }
+                    }
+
+                    // Subtle bottom vignette for readable overlay controls
+                    Rectangle {
+                        anchors {
+                            left: parent.left
+                            right: parent.right
+                            bottom: parent.bottom
+                        }
+                        height: 82
+                        gradient: Gradient {
+                            GradientStop { position: 0.0; color: "transparent" }
+                            GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0.38) }
+                        }
+                    }
+                }
+
+                // Quick wallpaper picker button (top-right pill)
+                Rectangle {
+                    anchors {
+                        top: parent.top
+                        right: parent.right
+                        margins: 10
+                    }
+                    width: wpBtnRow.implicitWidth + 16
+                    height: 28
+                    radius: 14
+                    color: wpBtnMouse.containsMouse ? Qt.rgba(0, 0, 0, 0.62) : Qt.rgba(0, 0, 0, 0.45)
+                    border.width: 1
+                    border.color: Qt.rgba(1, 1, 1, 0.16)
+
+                    RowLayout {
+                        id: wpBtnRow
+                        anchors.centerIn: parent
+                        spacing: 5
+
+                        MaterialSymbol {
+                            text: "wallpaper"
+                            iconSize: 14
+                            color: "#FFFFFF"
+                        }
+
+                        StyledText {
+                            text: Translation.tr("Change Wallpaper")
+                            font.pixelSize: 11
+                            font.weight: Font.Medium
+                            color: "#FFFFFF"
+                        }
+                    }
+
+                    MouseArea {
+                        id: wpBtnMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            GlobalStates.settingsOpen = false;
+                            GlobalStates.wallpaperSelectorOpen = true;
                         }
                     }
                 }
@@ -403,25 +385,25 @@ ContentPage {
                 GlassCard {
                     id: bottomBar
                     backdrop: wallpaperImg
-                    height: 64
+                    height: 54
                     anchors {
                         left: parent.left
                         right: parent.right
                         bottom: parent.bottom
-                        margins: 12
+                        margins: 10
                     }
 
                     Item {
                         id: barControls
                         anchors.fill: parent
-                        anchors.margins: 8
+                        anchors.margins: 6
 
                         RowLayout {
                             id: modeButtonsRow
                             anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
                             height: parent.height
-                            spacing: 6
+                            spacing: 5
                             uniformCellSizes: true
 
                             SmallLightDarkPreferenceButton {
@@ -438,7 +420,7 @@ ContentPage {
                             anchors.horizontalCenter: parent.horizontalCenter
                             anchors.verticalCenter: parent.verticalCenter
                             height: parent.height
-                            spacing: 6
+                            spacing: 5
 
                             BarScreenPopupButton {
                                 iconText: "position_bottom_right"
@@ -520,7 +502,7 @@ ContentPage {
                             visible: ColorSchemes.current === ""
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
-                            width: 48
+                            width: 42
                             height: parent.height
                             padding: 0
                             colBackground: Appearance.colors.colTertiaryContainer
@@ -534,12 +516,12 @@ ContentPage {
                                 MaterialSymbol {
                                     anchors.centerIn: parent
                                     text: "colorize"
-                                    iconSize: 22
+                                    iconSize: 20
                                     color: Appearance.colors.colOnLayer1
                                 }
                             }
                             StyledToolTip {
-                                text: "Change accent color"
+                                text: Translation.tr("Change accent color")
                             }
                         }
 
@@ -547,14 +529,14 @@ ContentPage {
                             id: schemeButton
                             z: 11
                             anchors.right: accentColorButton.visible ? accentColorButton.left : parent.right
-                            anchors.rightMargin: accentColorButton.visible ? 6 : 0
+                            anchors.rightMargin: accentColorButton.visible ? 5 : 0
                             anchors.verticalCenter: parent.verticalCenter
-                            width: 48
+                            width: 42
                             height: parent.height
                             iconText: "palette"
                             popupId: "schemes"
                             popupHost: page
-                            popupXOffset: (isMinimal ? -30 : -40) - (namedMode ? 68 : 0)
+                            popupXOffset: (isMinimal ? -30 : -44) - (namedMode ? 68 : 0)
                             backdrop: wallpaperImg
                             popupTitle: Translation.tr("Color scheme")
                             readonly property bool namedMode: ColorSchemes.current !== ""
@@ -582,6 +564,40 @@ ContentPage {
                             }
                         }
                     }
+                }
+            }
+        }
+
+        ContentSection {
+            icon: "tune"
+            title: Translation.tr("Quick Toggles")
+            shape: MaterialShape.Shape.Clover4Leaf
+            collapsible: false
+
+            GroupedList {
+                ConfigSwitch {
+                    buttonIcon: "blur_on"
+                    text: Translation.tr("UI Transparency")
+                    checked: Config.options.appearance.transparency.enable
+                    onCheckedChanged: { Config.options.appearance.transparency.enable = checked }
+                }
+                ConfigSwitch {
+                    buttonIcon: "layers"
+                    text: Translation.tr("Stack notifications in Dynamic Island")
+                    checked: Config.options.bar.dynamicIsland.stackNotifications
+                    onCheckedChanged: { Config.options.bar.dynamicIsland.stackNotifications = checked }
+                }
+                ConfigSwitch {
+                    buttonIcon: "call_to_action"
+                    text: Translation.tr("Show Dock")
+                    checked: Config.options.dock.enable
+                    onCheckedChanged: { Config.options.dock.enable = checked }
+                }
+                ConfigSwitch {
+                    buttonIcon: "colors"
+                    text: Translation.tr("Tint Dock app icons")
+                    checked: Config.options.dock.monochromeIcons
+                    onCheckedChanged: { Config.options.dock.monochromeIcons = checked }
                 }
             }
         }

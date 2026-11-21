@@ -24,21 +24,15 @@ Item {
     property var anchorEdges: Edges.Top
     property var anchorGravity: anchorEdges
 
-    property Item contentItem: StyledToolTipContent {
-        id: contentItem
-        anchors.centerIn: parent
-        text: root.text
-        shown: false
-        Component.onCompleted: shown = true
-        horizontalPadding: root.horizontalPadding
-        verticalPadding: root.verticalPadding
-    }
+    readonly property Item contentItem: tooltipLoader.item?.contentItem ?? null
 
     Loader {
         id: tooltipLoader
         anchors.fill: parent
-        active: root.internalVisibleCondition
+        active: root.internalVisibleCondition && root.QsWindow.window !== null
         sourceComponent: PopupWindow {
+            id: popupWindow
+            readonly property alias contentItem: tooltipContent
             visible: true
             anchor {
                 window: root.QsWindow.window
@@ -51,10 +45,18 @@ Item {
             }
 
             color: "transparent"
-            implicitWidth: root.contentItem.implicitWidth + root.horizontalMargin * 2
-            implicitHeight: root.contentItem.implicitHeight + root.verticalMargin * 2
+            implicitWidth: tooltipContent.implicitWidth + root.horizontalMargin * 2
+            implicitHeight: tooltipContent.implicitHeight + root.verticalMargin * 2
 
-            data: [root.contentItem]
+            StyledToolTipContent {
+                id: tooltipContent
+                anchors.centerIn: parent
+                text: root.text
+                shown: false
+                Component.onCompleted: shown = true
+                horizontalPadding: root.horizontalPadding
+                verticalPadding: root.verticalPadding
+            }
         }
     }
 }

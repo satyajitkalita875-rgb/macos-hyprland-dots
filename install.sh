@@ -66,7 +66,8 @@ chmod +x "$HOME/.config/quickshell/end4-pC/scripts/scan-apps.py" \
          "$HOME/.config/quickshell/end4-pC/scripts/thumbnails/generate-thumbnails-magick.sh" \
          "$HOME/.config/quickshell/end4-pC/scripts/videos/record.sh" \
          "$HOME/.config/quickshell/end4-pC/scripts/hyprland/hyprconfigurator.py" \
-         "$HOME/.config/quickshell/end4-pC/scripts/hyprland/hypridleconfigurator.py" 2>/dev/null || true
+         "$HOME/.config/quickshell/end4-pC/scripts/hyprland/hypridleconfigurator.py" \
+         "$HOME/.config/hypr/custom/scripts/"*.sh 2>/dev/null || true
 
 # Install bundled Material Symbols font to user fonts if not present
 if [ -f "$HOME/.config/quickshell/end4-pC/assets/fonts/MaterialSymbolsRounded.ttf" ]; then

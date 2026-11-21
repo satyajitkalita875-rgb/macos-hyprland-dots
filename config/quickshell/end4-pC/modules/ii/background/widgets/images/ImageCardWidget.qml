@@ -50,10 +50,10 @@ AbstractBackgroundWidget {
         var mid1 = (root.snapWidth1 + root.snapWidth2) / 2
         var mid2 = (root.snapWidth2 + root.snapWidth3) / 2
         var columns = width < mid1 ? 1 : (width < mid2 ? 2 : 3)
-        var double = root.doubleRow
-        if (dy > root.rowToggleDelta) double = true
-        else if (dy < -root.rowToggleDelta) double = false
-        if (double) return columns === 3 ? "2x3" : "2x2"
+        var isDouble = root.doubleRow
+        if (dy > root.rowToggleDelta) isDouble = true
+        else if (dy < -root.rowToggleDelta) isDouble = false
+        if (isDouble) return columns === 3 ? "2x3" : "2x2"
         return "1x" + columns
     }
 

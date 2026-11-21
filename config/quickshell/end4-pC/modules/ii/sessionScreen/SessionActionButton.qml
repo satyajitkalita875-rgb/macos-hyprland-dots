@@ -20,11 +20,11 @@ Item {
 
     signal clicked()
 
-    Layout.preferredWidth: 122
-    Layout.preferredHeight: 102
+    Layout.preferredWidth: 88
+    Layout.preferredHeight: 100
     Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
-    implicitWidth: 122
-    implicitHeight: 102
+    implicitWidth: 88
+    implicitHeight: 100
 
     Keys.onPressed: event => {
         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
@@ -40,70 +40,53 @@ Item {
         }
     }
 
-    Rectangle {
-        id: tileBg
-        anchors.fill: parent
-        radius: 18
-        color: {
-            if (button.pressed)
-                return ColorUtils.applyAlpha(button.accentColor, button.dark ? 0.28 : 0.20);
-            if (button.highlighted)
-                return ColorUtils.applyAlpha(button.accentColor, button.dark ? 0.18 : 0.13);
-            return Appearance.colors.colLayer1;
+    ColumnLayout {
+        anchors.centerIn: parent
+        spacing: 10
+
+        // Minimal floating circular icon button
+        Rectangle {
+            id: circleBtn
+            Layout.alignment: Qt.AlignHCenter
+            Layout.preferredWidth: 68
+            Layout.preferredHeight: 68
+            radius: 34
+            color: {
+                if (button.pressed)
+                    return ColorUtils.applyAlpha(button.accentColor, 0.92);
+                if (button.highlighted)
+                    return button.accentColor;
+                return Qt.rgba(1, 1, 1, 0.14);
+            }
+            border.width: button.highlighted ? 0 : 1
+            border.color: Qt.rgba(1, 1, 1, 0.22)
+
+            scale: button.pressed ? 0.94 : (button.highlighted ? 1.08 : 1.0)
+
+            Behavior on color { ColorAnimation { duration: 140; easing.type: Easing.OutCubic } }
+            Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
+
+            MaterialSymbol {
+                anchors.centerIn: parent
+                text: button.buttonIcon
+                iconSize: 28
+                fill: button.highlighted ? 1 : 0
+                color: "#FFFFFF"
+                opacity: button.highlighted ? 1.0 : 0.92
+            }
         }
-        border.width: button.highlighted ? 1.5 : 1
-        border.color: button.highlighted
-            ? ColorUtils.applyAlpha(button.accentColor, button.dark ? 0.68 : 0.55)
-            : ColorUtils.applyAlpha(Appearance.colors.colLayer0Border, button.dark ? 0.7 : 0.6)
 
-        scale: button.pressed ? 0.96 : (button.highlighted ? 1.03 : 1.0)
+        // Clean label below circle
+        StyledText {
+            Layout.alignment: Qt.AlignHCenter
+            horizontalAlignment: Text.AlignHCenter
+            text: button.buttonText
+            font.pixelSize: 13
+            font.weight: button.highlighted ? Font.DemiBold : Font.Medium
+            color: "#FFFFFF"
+            opacity: button.highlighted ? 1.0 : 0.78
 
-        Behavior on color { ColorAnimation { duration: 140; easing.type: Easing.OutCubic } }
-        Behavior on border.color { ColorAnimation { duration: 140; easing.type: Easing.OutCubic } }
-        Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutBack } }
-
-        ColumnLayout {
-            anchors.centerIn: parent
-            width: parent.width - 14
-            spacing: 9
-
-            // Circular Icon Badge
-            Rectangle {
-                Layout.alignment: Qt.AlignHCenter
-                Layout.preferredWidth: 46
-                Layout.preferredHeight: 46
-                radius: 23
-                color: button.highlighted
-                    ? button.accentColor
-                    : ColorUtils.applyAlpha(button.accentColor, button.dark ? 0.22 : 0.14)
-
-                Behavior on color { ColorAnimation { duration: 150; easing.type: Easing.OutCubic } }
-
-                MaterialSymbol {
-                    anchors.centerIn: parent
-                    text: button.buttonIcon
-                    iconSize: 23
-                    fill: button.highlighted ? 1 : 0
-                    color: button.highlighted ? "#ffffff" : button.accentColor
-
-                    Behavior on color { ColorAnimation { duration: 150 } }
-                }
-            }
-
-            // Clear Action Label inside the tile
-            StyledText {
-                Layout.fillWidth: true
-                Layout.alignment: Qt.AlignHCenter
-                horizontalAlignment: Text.AlignHCenter
-                text: button.buttonText
-                font.pixelSize: 12
-                font.weight: button.highlighted ? Font.DemiBold : Font.Medium
-                color: button.highlighted && button.isDestructive
-                    ? button.accentColor
-                    : Appearance.colors.colOnLayer0
-                elide: Text.ElideRight
-                maximumLineCount: 1
-            }
+            Behavior on opacity { NumberAnimation { duration: 130 } }
         }
     }
 

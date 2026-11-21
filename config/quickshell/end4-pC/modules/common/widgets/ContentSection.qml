@@ -18,6 +18,7 @@ ColumnLayout {
 
     readonly property string sectionId: root.title
     readonly property bool collapsed: root.collapsible && Config.options.settings.collapsedSections.includes(root.sectionId)
+    readonly property bool isMacos: Config.options.settings.style === "macos"
 
     property real flashScan: 0
     property real flashPop: 0
@@ -91,20 +92,35 @@ ColumnLayout {
             id: headerRow
             anchors.left: parent.left
             anchors.right: parent.right
-            spacing: 6
+            anchors.leftMargin: root.isMacos ? 6 : 0
+            anchors.rightMargin: root.isMacos ? 6 : 0
+            spacing: root.isMacos ? 6 : 6
 
-            MaterialShapeWrappedMaterialSymbol {
+            Loader {
+                active: !root.isMacos
+                visible: active
+                sourceComponent: MaterialShapeWrappedMaterialSymbol {
+                    text: root.icon
+                    iconSize: Appearance.font.pixelSize.large + 1
+                    wrappedShape: root.shape
+                    color: root.bgColor
+                    scale: 1 + 0.3 * root.flashPop
+                }
+            }
+            MaterialSymbol {
+                visible: root.isMacos && root.icon.length > 0
                 text: root.icon
-                iconSize: Appearance.font.pixelSize.large + 1
-                wrappedShape: root.shape
-                color: bgColor
-                scale: 1 + 0.3 * root.flashPop
+                iconSize: 15
+                color: Appearance.colors.colSubtext
             }
             StyledText {
                 text: root.title
-                font.pixelSize: Appearance.font.pixelSize.larger
-                font.weight: Font.Medium
-                color: Qt.tint(Appearance.colors.colOnSecondaryContainer, Qt.rgba(Appearance.colors.colPrimary.r, Appearance.colors.colPrimary.g, Appearance.colors.colPrimary.b, root.flashTint))
+                font.pixelSize: root.isMacos ? 13 : Appearance.font.pixelSize.larger
+                font.weight: root.isMacos ? Font.DemiBold : Font.Medium
+                color: Qt.tint(
+                    root.isMacos ? Appearance.colors.colOnLayer0 : Appearance.colors.colOnSecondaryContainer,
+                    Qt.rgba(Appearance.colors.colPrimary.r, Appearance.colors.colPrimary.g, Appearance.colors.colPrimary.b, root.flashTint)
+                )
 
                 TitleScanLine {
                     anchors.left: parent.left
@@ -121,7 +137,7 @@ ColumnLayout {
                 visible: root.hint.length > 0
                 Layout.leftMargin: 2
                 text: root.hintIcon
-                iconSize: Appearance.font.pixelSize.larger
+                iconSize: root.isMacos ? 15 : Appearance.font.pixelSize.larger
                 color: Appearance.colors.colSubtext
                 opacity: hintArea.containsMouse ? 1 : 0.55
 
@@ -147,10 +163,12 @@ ColumnLayout {
 
             MaterialSymbol {
                 visible: root.collapsible
-                text: root.collapsed ? "expand_more" : ""
-                iconSize: Appearance.font.pixelSize.larger
-                color: Appearance.colors.colOnSecondaryContainer
-                opacity: 0.7
+                text: root.isMacos
+                    ? (root.collapsed ? "chevron_right" : "expand_more")
+                    : (root.collapsed ? "expand_more" : "")
+                iconSize: root.isMacos ? 16 : Appearance.font.pixelSize.larger
+                color: root.isMacos ? Appearance.colors.colSubtext : Appearance.colors.colOnSecondaryContainer
+                opacity: root.isMacos ? 0.65 : 0.7
             }
         }
 

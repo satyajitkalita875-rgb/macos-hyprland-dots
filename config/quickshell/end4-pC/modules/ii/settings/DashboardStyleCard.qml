@@ -11,7 +11,8 @@ DashboardCard {
     readonly property var styleOptions: [
         { value: "default", name: Translation.tr("Default"), detail: Translation.tr("Full overlay panel"), icon: "settings_panorama", shape: MaterialShape.Shape.Cookie9Sided },
         { value: "minimal", name: Translation.tr("Minimal"), detail: Translation.tr("Compact overlay panel"), icon: "settings_heart", shape: MaterialShape.Shape.Clover4Leaf },
-        { value: "dashboard", name: Translation.tr("Dashboard"), detail: Translation.tr("Floating window with cards"), icon: "dashboard", shape: MaterialShape.Shape.SoftBurst }
+        { value: "dashboard", name: Translation.tr("Dashboard"), detail: Translation.tr("Floating window with cards"), icon: "dashboard", shape: MaterialShape.Shape.SoftBurst },
+        { value: "macos", name: Translation.tr("macOS"), detail: Translation.tr("System Settings split view"), icon: "laptop_mac", shape: MaterialShape.Shape.Circle }
     ]
 
     tint: Appearance.colors.colLayer1
