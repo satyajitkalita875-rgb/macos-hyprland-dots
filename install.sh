@@ -58,6 +58,17 @@ fi
 # Expand __HOME__ placeholders in config.json for the current user
 sed -i "s|__HOME__|$HOME|g" "$HOME/.config/illogical-impulse/config.json"
 
+# Install DaVinci Resolve NVIDIA + XWayland launch wrapper & desktop override
+if [ -f "$REPO_DIR/config/local/bin/davinci-resolve" ]; then
+    mkdir -p "$HOME/.local/bin" "$HOME/.local/share/applications"
+    cp -a "$REPO_DIR/config/local/bin/davinci-resolve" "$HOME/.local/bin/davinci-resolve"
+    chmod +x "$HOME/.local/bin/davinci-resolve"
+    ln -sf davinci-resolve "$HOME/.local/bin/resolve"
+    sed "s|__HOME__|$HOME|g" "$REPO_DIR/config/local/share/applications/com.blackmagicdesign.resolve.desktop" \
+        > "$HOME/.local/share/applications/com.blackmagicdesign.resolve.desktop"
+    command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
+fi
+
 # Ensure scripts are executable
 chmod +x "$HOME/.config/quickshell/end4-pC/scripts/scan-apps.py" \
          "$HOME/.config/quickshell/end4-pC/scripts/icon-resolve.py" \
